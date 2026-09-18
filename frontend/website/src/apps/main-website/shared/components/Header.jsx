@@ -15,9 +15,11 @@ import {
   ShieldCheck,
   ArrowRight,
   MessageCircle,
+  Search,
 } from "lucide-react";
-import { company } from "../../../../data/company";
+import { company } from "@/data/company";
 import Button from "./Button";
+import GlobalSearchModal from "@/components/search/GlobalSearchModal";
 
 const servicesList = [
   {
@@ -81,6 +83,7 @@ const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
   const dropdownRef = useRef(null);
   const location = useLocation();
 
@@ -88,7 +91,20 @@ const Header = () => {
   useEffect(() => {
     setMenuOpen(false);
     setServicesOpen(false);
+    setSearchModalOpen(false);
   }, [location.pathname]);
+
+  // Global keyboard shortcut for Ctrl+K / Cmd+K search
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchModalOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Scroll shadow effect
   useEffect(() => {
@@ -246,7 +262,21 @@ const Header = () => {
           </nav>
 
           {/* Desktop Right Actions Cluster */}
-          <div className="hidden lg:flex items-center gap-3.5">
+          <div className="hidden lg:flex items-center gap-2.5 xl:gap-3.5">
+            {/* Desktop Search Trigger */}
+            <button
+              type="button"
+              onClick={() => setSearchModalOpen(true)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-full border border-border bg-surface hover:border-primary/40 hover:bg-background text-xs font-medium text-text-muted transition-all duration-200 shadow-xs cursor-pointer group"
+              aria-label="Search site (Ctrl+K)"
+            >
+              <Search size={14} className="text-text-muted group-hover:text-primary transition-colors" />
+              <span className="text-text-muted group-hover:text-text transition-colors">Search...</span>
+              <kbd className="hidden xl:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-background border border-border text-text-muted">
+                Ctrl K
+              </kbd>
+            </button>
+
             {company.phone.primary && (
               <a
                 href={`tel:${company.phone.primary}`}
@@ -263,8 +293,17 @@ const Header = () => {
             </Button>
           </div>
 
-          {/* Mobile Right Controls: Phone + Menu toggle */}
+          {/* Mobile Right Controls: Search + Phone + Menu toggle */}
           <div className="flex lg:hidden items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSearchModalOpen(true)}
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-surface border border-border text-text hover:text-primary transition-colors cursor-pointer"
+              aria-label="Search site"
+            >
+              <Search size={17} />
+            </button>
+
             {company.phone.primary && (
               <a
                 href={`tel:${company.phone.primary}`}
@@ -296,6 +335,24 @@ const Header = () => {
         >
           <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-2">
             
+            {/* Mobile Search Quick Trigger */}
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                setSearchModalOpen(true);
+              }}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-surface border border-border text-xs text-text-muted font-medium mb-1 text-left hover:border-primary/40 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Search size={15} className="text-primary" />
+                <span>Search services, cities, routes...</span>
+              </span>
+              <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                Search
+              </span>
+            </button>
+
             {/* Direct Quick Actions Bar */}
             <div className="grid grid-cols-2 gap-2 pb-3 mb-2 border-b border-border">
               {company.phone.primary && (
@@ -360,6 +417,12 @@ const Header = () => {
           </div>
         </div>
       )}
+
+      {/* Global Search Modal */}
+      <GlobalSearchModal
+        isOpen={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+      />
     </header>
   );
 };

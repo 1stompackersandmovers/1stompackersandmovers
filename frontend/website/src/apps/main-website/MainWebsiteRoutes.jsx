@@ -13,6 +13,7 @@ import LocationPage from "./pages/Location/LocationPage";
 import RoutePage from "./pages/Route/RoutePage";
 import Privacy from "./pages/Legal/Privacy";
 import Terms from "./pages/Legal/Terms";
+import SearchPage from "./pages/Search/SearchPage";
 import NotFound from "./shared/components/NotFound";
 
 const MainWebsiteRoutes = () => {
@@ -31,6 +32,7 @@ const MainWebsiteRoutes = () => {
         <Route path="route/:slug" element={<RoutePage />} />
         <Route path="privacy" element={<Privacy />} />
         <Route path="terms" element={<Terms />} />
+        <Route path="search" element={<SearchPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

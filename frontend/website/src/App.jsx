@@ -4,6 +4,7 @@ import { Provider } from "react-redux";
 import { HelmetProvider } from "react-helmet-async";
 import store from "./store";
 import MainWebsiteRoutes from "./apps/main-website/MainWebsiteRoutes";
+import ErrorBoundary from "./apps/main-website/shared/components/ErrorBoundary";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -31,6 +32,8 @@ function LenisScroll() {
         smoothWheel: true,
       });
 
+      window.__lenis = lenis;
+
       function raf(time) {
         lenis.raf(time);
         requestAnimationFrame(raf);
@@ -40,6 +43,9 @@ function LenisScroll() {
     });
 
     return () => {
+      if (window.__lenis) {
+        window.__lenis = null;
+      }
       if (lenis) {
         lenis.destroy();
       }
@@ -57,7 +63,14 @@ const App = () => {
           <ScrollToTop />
           <LenisScroll />
           <Routes>
-            <Route path="/*" element={<MainWebsiteRoutes />} />
+            <Route
+              path="/*"
+              element={
+                <ErrorBoundary>
+                  <MainWebsiteRoutes />
+                </ErrorBoundary>
+              }
+            />
           </Routes>
         </BrowserRouter>
       </Provider>
