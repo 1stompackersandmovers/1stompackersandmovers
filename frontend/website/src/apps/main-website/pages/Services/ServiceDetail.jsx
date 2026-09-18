@@ -51,7 +51,7 @@ const serviceDetails = {
       },
       {
         q: "Are packing materials included in the quote or charged separately?",
-        a: "All standard packing supplies—including 5-ply export-quality cartons, stretch film, heavy-duty bubble wrap, corrugated sheets, waterproof tape, and label markers—are fully inclusive in your written estimate.",
+        a: "All standard packing supplies - including 5-ply export-quality cartons, stretch film, heavy-duty bubble wrap, corrugated sheets, waterproof tape, and label markers - are fully inclusive in your written estimate.",
       },
       {
         q: "What happens if items get damaged during transit?",
@@ -128,7 +128,7 @@ const serviceDetails = {
     ],
     faqs: [
       {
-        q: "How is my car transported—is it driven or carried inside a truck?",
+        q: "How is my car transported - is it driven or carried inside a truck?",
         a: "Your car is 100% carried inside a specialized, enclosed multi-car or single-car hydraulic carrier. It is NEVER driven on interstate highways, ensuring zero odometer increase, zero tire wear, and zero exposure to highway gravel or weather.",
       },
       {
@@ -137,7 +137,7 @@ const serviceDetails = {
       },
       {
         q: "Can I keep personal luggage or household items inside the car during transit?",
-        a: "Standard transit regulations permit up to 30–40 kg of soft luggage placed securely in the trunk below the window line. However, valuable items, electronics, cash, jewelry, and flammable materials must never be left in the vehicle.",
+        a: "Standard transit regulations permit up to 30-40 kg of soft luggage placed securely in the trunk below the window line. However, valuable items, electronics, cash, jewelry, and flammable materials must never be left in the vehicle.",
       },
       {
         q: "How is the car secured inside the carrier during transit?",
@@ -149,7 +149,7 @@ const serviceDetails = {
       },
       {
         q: "How much fuel should be in the tank at the time of pickup?",
-        a: "We recommend maintaining approximately 1/4th (quarter) tank of fuel—enough for loading, unloading, and short positioning maneuvers, while minimizing vehicle weight and safety hazards.",
+        a: "We recommend maintaining approximately 1/4th (quarter) tank of fuel - enough for loading, unloading, and short positioning maneuvers, while minimizing vehicle weight and safety hazards.",
       },
       {
         q: "Do you provide doorstep pickup and delivery for vehicles?",
@@ -200,7 +200,7 @@ const serviceDetails = {
       },
       {
         q: "How long does two-wheeler interstate delivery take?",
-        a: "Typical delivery times range from 3 to 7 business days depending on the route distance (e.g., Delhi to Bangalore takes 4–5 days). We provide direct tracking updates throughout transit.",
+        a: "Typical delivery times range from 3 to 7 business days depending on the route distance (e.g., Delhi to Bangalore takes 4-5 days). We provide direct tracking updates throughout transit.",
       },
       {
         q: "Is doorstep pickup and delivery available for two-wheelers?",
@@ -384,7 +384,7 @@ const serviceDetails = {
     faqs: [
       {
         q: "Why do I need transit insurance if your packing and moving team is professional?",
-        a: "While our damage rate is under 0.2%, interstate transit involves highway risks completely outside anyone's control—such as third-party road collisions, severe weather, overturned vehicles, flash floods, or highway fire. Insurance protects your declared financial investment against unpredictable risks.",
+        a: "While our damage rate is under 0.2%, interstate transit involves highway risks completely outside anyone's control - such as third-party road collisions, severe weather, overturned vehicles, flash floods, or highway fire. Insurance protects your declared financial investment against unpredictable risks.",
       },
       {
         q: "What is the difference between Declared Value Cover and Carrier Liability?",
@@ -546,7 +546,7 @@ const ServiceDetail = () => {
               {/* Exactly 2 CTAs: Quote & Call - side-by-side with balanced rhythm */}
               <div className="flex flex-wrap items-center gap-4 sm:gap-5">
                 <Button
-                  to="/get-quote"
+                  to={`/get-quote?service=${service.slug}`}
                   size="lg"
                   className="shadow-lg shadow-accent/25"
                 >
@@ -644,13 +644,13 @@ const ServiceDetail = () => {
 
                 <div className="space-y-4">
                   <Button
-                    to="/get-quote"
+                    to={`/get-quote?service=${service.slug}`}
                     size="lg"
                     className="w-full shadow-md shadow-accent/20"
                   >
                     Request a Quote
                   </Button>
-
+                  
                   {company.phone.primary && (
                     <a
                       href={`tel:${company.phone.primary}`}
@@ -675,7 +675,7 @@ const ServiceDetail = () => {
       </section>
 
       {/* Embedded Quote Form for direct action */}
-      <QuoteForm />
+      <QuoteForm defaultService={service.title} />
 
       {/* Extensive Expandable FAQ Section placed below the form */}
       {service.faqs && service.faqs.length > 0 && (
@@ -724,7 +724,7 @@ const ServiceDetail = () => {
                     <span>Call {company.phone.primary}</span>
                   </a>
                 )}
-                <Button to="/get-quote" size="md">
+                <Button to={`/get-quote?service=${service.slug}`} size="md">
                   Request a Free Quote
                 </Button>
               </div>

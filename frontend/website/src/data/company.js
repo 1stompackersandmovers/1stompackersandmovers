@@ -25,11 +25,15 @@ export const company = {
 
   phone: {
     primary: "+91 7033488691",
+    primaryDisplay: "+91 7033488691",
     whatsapp: "+91 7033488691",
   },
 
   email: {
     general: "hello@1stompackersandmovers.com",
+    privacy: "privacy@1stompackersandmovers.com",
+    legal: "legal@1stompackersandmovers.com",
+    claims: "claims@1stompackersandmovers.com",
   },
 
   headOffice: {
@@ -51,8 +55,8 @@ export const company = {
    * businessHours — shown on contact page and in schema.org
    */
   businessHours: {
-    weekdays: "9:00 AM – 7:00 PM", // TODO: confirm with client
-    weekends: "9:00 AM – 5:00 PM", // TODO: confirm with client
+    weekdays: "9:00 AM - 7:00 PM", // TODO: confirm with client
+    weekends: "9:00 AM - 5:00 PM", // TODO: confirm with client
   },
 
   /**
@@ -85,13 +89,13 @@ export const company = {
   ],
 
   /**
-   * statsForTrustBar — only real, verifiable numbers go here.
+   * statsForTrustBar - only real, verifiable numbers go here.
    * Leave null if the client hasn't confirmed the figure.
    */
   stats: {
     yearsInBusiness: null, // TODO: confirm with client
-    districtsServed: 50, // approximate from location data — confirm
+    districtsServed: 50, // approximate from location data - confirm
     statesServed: 6, // Bihar, Jharkhand, UP, Delhi NCR, WB + others
-    familiesMoved: null, // TODO: confirm with client — do not fabricate
+    familiesMoved: null, // TODO: confirm with client - do not fabricate
   },
 };

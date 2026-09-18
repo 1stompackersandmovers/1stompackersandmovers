@@ -7,7 +7,7 @@ const MainWebsiteLayout = () => {
   return (
     <div className="flex flex-col min-h-dvh">
       <Header />
-      {/* pt-16 on mobile, pt-20 on lg — matches header height */}
+      {/* pt-16 on mobile, pt-20 on lg - matches header height */}
       <main className="flex-1 pt-16 lg:pt-20">
         <Outlet />
       </main>

@@ -73,13 +73,13 @@ const Hero = () => {
     setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
   };
 
-  // Auto-advance slides every 5.5s unless paused by hover
+  // Auto-advance slides every 3.6s unless paused by hover
   useEffect(() => {
     if (isPaused) return;
 
     timerRef.current = setInterval(() => {
       nextSlide();
-    }, 5500);
+    }, 3600);
 
     return () => clearInterval(timerRef.current);
   }, [currentSlide, isPaused]);
@@ -104,7 +104,7 @@ const Hero = () => {
           return (
             <div
               key={item.id}
-              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
                 isActive ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
               }`}
             >
@@ -114,7 +114,7 @@ const Hero = () => {
                 className="w-full h-full object-cover object-center lg:object-right"
                 loading={index === 0 ? "eager" : "lazy"}
               />
-              {/* Left-weighted dark gradient — perfectly covers the left text area while leaving the subject clear */}
+              {/* Left-weighted dark gradient - perfectly covers the left text area while leaving the subject clear */}
               <div className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-[#07111e]/95 via-[#07111e]/85 via-45% to-transparent" />
             </div>
           );
@@ -163,7 +163,7 @@ const Hero = () => {
             {slide.description}
           </p>
 
-          {/* Action Buttons Cluster — Generous, uncollapsible spacing */}
+          {/* Action Buttons Cluster - Generous, uncollapsible spacing */}
           <div className="pt-8 sm:pt-10 pb-12 sm:pb-16 flex flex-col sm:flex-row items-stretch sm:items-center gap-5 sm:gap-6 w-full sm:w-auto">
             <Button
               to="/get-quote"

@@ -73,6 +73,7 @@ export const placeImages = {
   "West Bengal": "/images/places/west-bengal.webp",
   Maharashtra: "/images/places/maharashtra.webp",
   Karnataka: "/images/places/karnataka.webp",
+  Telangana: "/images/places/telangana.webp",
   Gujarat: "/images/places/gujrat.webp",
   Rajasthan: "/images/places/rajasthan.webp",
   "Madhya Pradesh": "/images/places/mp.webp",

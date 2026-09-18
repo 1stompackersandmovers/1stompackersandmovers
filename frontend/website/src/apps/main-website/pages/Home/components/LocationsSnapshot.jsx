@@ -140,7 +140,7 @@ const LocationsSnapshot = () => {
           </InteractiveLink>
         </div>
 
-        {/* State Grid — Full 2 Rows (3 x 2 = 6 cards) */}
+        {/* State Grid - Full 2 Rows (3 x 2 = 6 cards) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-16 sm:mb-20">
           {STATE_CARDS.map((item) => {
             const locs = (locationsByState[item.state] ?? []).filter(
@@ -225,7 +225,7 @@ const LocationsSnapshot = () => {
           })}
         </div>
 
-        {/* Popular Routes — Full 2 Rows (3 x 2 = 6 cards) with Main Hub */}
+        {/* Popular Routes - Full 2 Rows (3 x 2 = 6 cards) with Main Hub */}
         <div className="pt-10 border-t border-border/80">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
             <div>

@@ -235,11 +235,11 @@ const LocationPage = () => {
 
                 <div className="space-y-3">
                   <Button
-                    to="/get-quote"
+                    to={`/get-quote?from=${encodeURIComponent(location.name + ", " + location.state)}`}
                     size="md"
                     className="w-full"
                   >
-                    Get a Free Quote
+                    Get a Free Quote in {location.name}
                   </Button>
                   {company.phone.primary && (
                     <a

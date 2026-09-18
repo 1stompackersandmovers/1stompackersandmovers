@@ -19,6 +19,7 @@ const steps = [
     icon: CheckCircle2,
     step: "1",
     title: "Survey & quote",
+    image: "/images/process-for-home-service/visti-and-survey.webp",
     description:
       "We visit your home (or do a video survey), assess the volume and distance, and give you a clear, itemised price before anything is packed.",
   },
@@ -26,6 +27,7 @@ const steps = [
     icon: Package,
     step: "2",
     title: "Professional packing",
+    image: "/images/process-for-home-service/packing.webp",
     description:
       "Our team arrives on the agreed date with the right materials. Fragile items are individually wrapped. Nothing gets taped into the wrong box.",
   },
@@ -33,6 +35,7 @@ const steps = [
     icon: Truck,
     step: "3",
     title: "Safe transport",
+    image: "/images/process-for-home-service/safe-transport.webp",
     description:
       "Your belongings travel in a dedicated vehicle, never mixed with another family's goods. We take the safest route and update you when we depart and arrive.",
   },
@@ -40,6 +43,7 @@ const steps = [
     icon: Home,
     step: "4",
     title: "Delivery & unpacking",
+    image: "/images/process-for-home-service/setting-on-new-place.webp",
     description:
       "We unload, place furniture where you want it, and do a room-by-room check with you before we leave. Your new home, ready to live in.",
   },
@@ -186,26 +190,39 @@ const HowItWorks = () => {
             return (
               <li
                 key={s.step}
-                className="flex flex-col p-6 rounded-[var(--radius-lg)] border border-border bg-background shadow-xs hover:border-primary/40 hover:shadow-md transition-all duration-200"
+                className="group flex flex-col rounded-[var(--radius-lg)] border border-border/80 bg-background shadow-xs hover:border-primary/40 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-xs font-extrabold font-display shrink-0 shadow-xs">
-                    0{s.step}
-                  </span>
-                  <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-primary">
-                    <Icon
-                      size={18}
-                      strokeWidth={2}
-                      aria-hidden="true"
-                    />
+                {/* 16:10 Visual Image Header */}
+                <div className="relative aspect-[16/10] w-full overflow-hidden bg-text/5">
+                  <img
+                    src={s.image}
+                    alt={s.title}
+                    className="w-full h-full object-cover object-center group-hover:scale-106 transition-transform duration-500 ease-out"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent pointer-events-none" />
+
+                  {/* Step Badge */}
+                  <div className="absolute top-3 left-3 z-10">
+                    <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-white font-display font-black text-xs tracking-wider border border-white/10">
+                      STEP 0{s.step}
+                    </span>
+                  </div>
+
+                  {/* Icon */}
+                  <div className="absolute bottom-3 right-3 z-10 w-8 h-8 rounded-lg bg-white text-primary flex items-center justify-center group-hover:bg-accent group-hover:text-accent-foreground group-hover:rotate-6 transition-all duration-300 shadow-md">
+                    <Icon size={16} strokeWidth={2.5} aria-hidden="true" />
                   </div>
                 </div>
-                <h3 className="font-display font-bold text-text text-base mb-2">
-                  {s.title}
-                </h3>
-                <p className="text-text-muted text-xs sm:text-sm leading-relaxed flex-1">
-                  {s.description}
-                </p>
+
+                <div className="p-5 flex flex-col flex-1">
+                  <h3 className="font-display font-bold text-text text-base mb-2 group-hover:text-primary transition-colors">
+                    {s.title}
+                  </h3>
+                  <p className="text-text-muted text-xs sm:text-sm leading-relaxed flex-1">
+                    {s.description}
+                  </p>
+                </div>
               </li>
             );
           })}

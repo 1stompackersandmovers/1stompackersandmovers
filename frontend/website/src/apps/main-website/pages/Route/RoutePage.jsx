@@ -172,11 +172,11 @@ const RoutePage = () => {
 
                 <div className="space-y-3">
                   <Button
-                    to="/get-quote"
+                    to={`/get-quote?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}&scope=interstate`}
                     size="md"
                     className="w-full"
                   >
-                    Request Route Quote
+                    Request {route.from} to {route.to} Quote
                   </Button>
                   {company.phone.primary && (
                     <a

@@ -12,10 +12,11 @@ import { Link } from "react-router";
 const Button = ({
   children,
   to,
+  href,
   type = "button",
   onClick,
   disabled = false,
-  variant = "accent", // "accent" | "primary" | "outline"
+  variant = "accent", // "accent" | "primary" | "outline" | "ghost"
   size = "md", // "sm" | "md" | "lg"
   showArrow = true,
   icon,
@@ -37,6 +38,8 @@ const Button = ({
       "bg-primary text-white border-2 border-white/25 shadow-[0_8px_22px_rgba(32,58,100,0.28)] hover:border-white/50 active:shadow-sm",
     outline:
       "bg-background text-text border-2 border-border shadow-sm hover:border-primary/40 hover:bg-surface active:shadow-none",
+    ghost:
+      "bg-transparent text-text border-2 border-border/80 hover:bg-surface hover:border-primary/40 active:shadow-none",
   }[variant] || "bg-accent text-accent-foreground border-2 border-white/60 shadow-[0_8px_22px_rgba(245,166,35,0.32)]";
 
   const combinedClasses = `
@@ -77,6 +80,14 @@ const Button = ({
       <Link to={to} className={combinedClasses} {...props}>
         {content}
       </Link>
+    );
+  }
+
+  if (href) {
+    return (
+      <a href={href} className={combinedClasses} {...props}>
+        {content}
+      </a>
     );
   }
 
