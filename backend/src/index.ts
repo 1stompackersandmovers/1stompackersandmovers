@@ -20,6 +20,20 @@ app.get("/health", (c) => {
   return c.json({ status: "ok", service: "1st-om-packers-api" });
 });
 
+// Geolocation endpoint
+app.get("/api/geo", (c) => {
+  const cf = (c.req.raw as unknown as { cf?: Record<string, unknown> })?.cf || {};
+  return c.json({
+    city: cf.city || "",
+    region: cf.region || "",
+    regionCode: cf.regionCode || "",
+    country: cf.country || "",
+    postalCode: cf.postalCode || "",
+    latitude: cf.latitude || "",
+    longitude: cf.longitude || "",
+  });
+});
+
 // Mount routes
 app.route("/api/leads", leadsRouter);
 

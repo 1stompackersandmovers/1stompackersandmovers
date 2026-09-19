@@ -16,6 +16,7 @@ import {
   ArrowRight,
   MessageCircle,
   Search,
+  CheckCircle2,
 } from "lucide-react";
 import { company } from "@/data/company";
 import Button from "./Button";
@@ -130,33 +131,32 @@ const Header = () => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-background/98 backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.06)] border-b border-border"
-          : "bg-background/95 backdrop-blur-sm border-b border-border/70"
+          ? "bg-background/95 backdrop-blur-xl shadow-[0_4px_25px_rgba(10,25,50,0.06)] border-b border-border/80"
+          : "bg-background/85 backdrop-blur-md border-b border-border/50"
       }`}
     >
-
       {/* ── Main Navigation Bar ──────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           
-          {/* Brand Logo */}
+          {/* Zone 1: Brand Logo */}
           <Link
             to="/"
-            className="flex items-center shrink-0 py-1 focus:outline-none"
+            className="flex items-center shrink-0 py-1 focus:outline-none transition-transform duration-200 hover:scale-[1.02]"
             aria-label={`${company.brandName}, return to homepage`}
           >
             <img
               src={company.logo.horizontal}
               alt={company.brandName}
-              className="h-9 sm:h-11 lg:h-12 w-auto object-contain"
+              className="h-8 sm:h-9 lg:h-10 w-auto object-contain"
             />
           </Link>
 
-          {/* Desktop Nav Links */}
+          {/* Zone 2: Desktop Nav Links Enclosed in Airy Frosted Capsule */}
           <nav
-            className="hidden lg:flex items-center gap-1 xl:gap-2"
+            className="hidden lg:flex items-center gap-1 xl:gap-1.5 p-1 rounded-full bg-surface/60 border border-border/50 backdrop-blur-xs"
             aria-label="Primary navigation"
           >
             {/* Services Dropdown Button */}
@@ -169,17 +169,17 @@ const Header = () => {
               <button
                 type="button"
                 onClick={() => setServicesOpen((prev) => !prev)}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs xl:text-[13px] font-medium transition-all cursor-pointer ${
                   servicesOpen || location.pathname.startsWith("/services")
-                    ? "text-primary bg-surface font-bold"
-                    : "text-text hover:text-primary hover:bg-surface"
+                    ? "text-primary bg-background shadow-xs font-bold"
+                    : "text-text-muted hover:text-text hover:bg-background/50"
                 }`}
                 aria-expanded={servicesOpen}
                 aria-haspopup="true"
               >
                 <span>Services</span>
                 <ChevronDown
-                  size={15}
+                  size={14}
                   className={`transition-transform duration-200 ${
                     servicesOpen ? "rotate-180 text-primary" : "text-text-muted"
                   }`}
@@ -188,8 +188,8 @@ const Header = () => {
 
               {/* Services Mega Dropdown Panel */}
               {servicesOpen && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-[580px] z-50">
-                  <div className="bg-background rounded-[var(--radius-lg)] border border-border shadow-2xl p-5 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2.5 w-[580px] z-50">
+                  <div className="bg-background/98 backdrop-blur-xl rounded-2xl border border-border shadow-[0_20px_50px_rgba(10,25,50,0.12)] p-5 overflow-hidden animate-in fade-in-50 zoom-in-95 duration-150">
                     
                     <div className="flex items-center justify-between pb-3 mb-3 border-b border-border">
                       <span className="text-xs font-bold uppercase tracking-wider text-text-muted">
@@ -213,7 +213,7 @@ const Header = () => {
                             key={svc.slug}
                             to={`/services/${svc.slug}`}
                             onClick={() => setServicesOpen(false)}
-                            className="group flex items-start gap-3 p-2.5 rounded-lg hover:bg-surface transition-colors"
+                            className="group flex items-start gap-3 p-2.5 rounded-xl hover:bg-surface transition-all"
                           >
                             <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground flex items-center justify-center shrink-0 transition-colors mt-0.5">
                               <SvcIcon size={16} />
@@ -233,9 +233,18 @@ const Header = () => {
 
                     {/* Bottom reassurance strip */}
                     <div className="mt-3 pt-3 border-t border-border bg-surface/60 -mx-5 -mb-5 px-5 py-2.5 flex items-center justify-between text-[11px] text-text-muted">
-                      <span>✓ 100% Dedicated Closed Trucks</span>
-                      <span>✓ Pre-Move Itemized Quote</span>
-                      <span>✓ Full Transit Insurance</span>
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <CheckCircle2 size={13} className="text-primary shrink-0" />
+                        100% Dedicated Closed Trucks
+                      </span>
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <CheckCircle2 size={13} className="text-primary shrink-0" />
+                        Binding Written Quote
+                      </span>
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <CheckCircle2 size={13} className="text-primary shrink-0" />
+                        Transit Insurance
+                      </span>
                     </div>
 
                   </div>
@@ -249,10 +258,10 @@ const Header = () => {
                 key={link.to}
                 to={link.to}
                 className={({ isActive }) =>
-                  `px-3.5 py-2 rounded-full text-sm font-semibold transition-colors duration-150 ${
+                  `px-3.5 py-1.5 rounded-full text-xs xl:text-[13px] font-medium transition-all duration-150 ${
                     isActive
-                      ? "text-primary bg-surface font-bold"
-                      : "text-text hover:text-primary hover:bg-surface"
+                      ? "text-primary bg-background shadow-xs font-bold"
+                      : "text-text-muted hover:text-text hover:bg-background/50"
                   }`
                 }
               >
@@ -261,34 +270,52 @@ const Header = () => {
             ))}
           </nav>
 
-          {/* Desktop Right Actions Cluster */}
-          <div className="hidden lg:flex items-center gap-2.5 xl:gap-3.5">
-            {/* Desktop Search Trigger */}
+          {/* Zone 3: Desktop Right Actions Cluster (Utility + Divider + Primary Hero CTA) */}
+          <div className="hidden lg:flex items-center gap-3">
+            {/* Minimalist Search Trigger */}
             <button
               type="button"
               onClick={() => setSearchModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-full border border-border bg-surface hover:border-primary/40 hover:bg-background text-xs font-medium text-text-muted transition-all duration-200 shadow-xs cursor-pointer group"
+              className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full border border-border/70 bg-surface/70 hover:bg-surface hover:border-primary/40 text-xs font-medium text-text-muted hover:text-text transition-all shadow-2xs cursor-pointer group"
               aria-label="Search site (Ctrl+K)"
             >
               <Search size={14} className="text-text-muted group-hover:text-primary transition-colors" />
-              <span className="text-text-muted group-hover:text-text transition-colors">Search...</span>
-              <kbd className="hidden xl:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-background border border-border text-text-muted">
-                Ctrl K
+              <span className="hidden xl:inline text-xs font-medium text-text-muted group-hover:text-text transition-colors">Search</span>
+              <kbd className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-background border border-border text-text-muted/80">
+                ⌘K
               </kbd>
             </button>
 
+            {/* Hairline Separator */}
+            <div className="hidden xl:block w-px h-5 bg-border/80 mx-0.5 shrink-0" />
+
+            {/* Helpline Unit with Live Pulse Status */}
             {company.phone.primary && (
               <a
                 href={`tel:${company.phone.primary}`}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-border bg-surface hover:border-primary/40 hover:bg-background text-xs font-bold text-text transition-all duration-200 shadow-xs"
+                className="hidden xl:inline-flex items-center gap-2 text-xs font-semibold text-text hover:text-primary transition-colors group px-2 py-1 rounded-full hover:bg-surface"
                 aria-label={`Call helpline: ${company.phone.primary}`}
               >
-                <PhoneCall size={14} className="text-primary" />
-                <span>{company.phone.primary}</span>
+                <span className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                  <PhoneCall size={12} />
+                </span>
+                <span className="flex flex-col text-left">
+                  <span className="text-[9px] uppercase tracking-wider font-bold text-text-muted leading-none">
+                    Helpline
+                  </span>
+                  <span className="font-mono text-xs font-bold text-text group-hover:text-primary transition-colors mt-0.5 leading-none">
+                    {company.phone.primary}
+                  </span>
+                </span>
               </a>
             )}
 
-            <Button to="/get-quote" size="sm">
+            {/* Primary Action Button */}
+            <Button
+              to="/get-quote"
+              size="sm"
+              className="shadow-xs hover:shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
               Get a Free Quote
             </Button>
           </div>
@@ -298,29 +325,30 @@ const Header = () => {
             <button
               type="button"
               onClick={() => setSearchModalOpen(true)}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-surface border border-border text-text hover:text-primary transition-colors cursor-pointer"
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-surface border border-border/80 text-text hover:text-primary transition-colors cursor-pointer"
               aria-label="Search site"
             >
-              <Search size={17} />
+              <Search size={16} />
             </button>
 
             {company.phone.primary && (
               <a
                 href={`tel:${company.phone.primary}`}
-                className="flex items-center justify-center w-10 h-10 rounded-full bg-surface border border-border text-primary"
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-colors"
                 aria-label="Call helpline"
               >
-                <PhoneCall size={18} strokeWidth={2.2} />
+                <PhoneCall size={15} />
               </a>
             )}
+
             <button
               onClick={() => setMenuOpen((prev) => !prev)}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-surface border border-border text-text hover:bg-background transition-colors"
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-surface border border-border/80 text-text hover:bg-background transition-colors"
               aria-expanded={menuOpen}
               aria-controls="mobile-nav"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
             >
-              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+              {menuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
 

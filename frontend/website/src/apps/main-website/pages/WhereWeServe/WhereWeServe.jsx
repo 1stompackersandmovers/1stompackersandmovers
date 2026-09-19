@@ -594,15 +594,15 @@ const WhereWeServe = () => {
       <section className="bg-background py-14 sm:py-20 border-t border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-bold uppercase tracking-wider mb-3">
               <ShieldCheck size={14} />
               <span>National Safety Protocols</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               How We Protect Your Goods Across State Borders
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               Long-distance moves demand higher standards. Our operational safeguards ensure zero losses.
             </p>
           </div>

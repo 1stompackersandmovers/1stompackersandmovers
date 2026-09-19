@@ -280,15 +280,15 @@ const GetQuote = () => {
       {/* ── 3. 4-STEP QUOTATION PROCESS VISUALIZER ────────────────────── */}
       <section className="bg-surface py-14 sm:py-20 border-t border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/15 border border-accent/30 text-accent-foreground text-xs font-bold uppercase tracking-wider mb-3">
               <FileCheck size={13} className="text-accent" />
               <span>Step-by-Step Transparency</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               How We Calculate Your Exact Move Price
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               From your initial request to final key handover, here is how we ensure zero pricing surprises.
             </p>
           </div>
@@ -317,15 +317,15 @@ const GetQuote = () => {
       {/* ── 4. WHAT IS INCLUDED IN EVERY QUOTE ────────────────────────── */}
       <section className="bg-background py-14 sm:py-20 border-t border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
               <BadgeCheck size={14} className="text-primary" />
               <span>All-Inclusive Value</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               Everything Included in Your Written Estimate
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               We never quote a cheap bare-bones rate and charge thousands for tape, cartons, or blankets.
             </p>
           </div>
@@ -362,15 +362,15 @@ const GetQuote = () => {
       {/* ── 5. QUOTATION SCAM PREVENTION MATRIX ───────────────────────── */}
       <section className="bg-surface py-14 sm:py-20 border-t border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-700 text-xs font-bold uppercase tracking-wider mb-3">
               <AlertTriangle size={13} className="text-red-600" />
               <span>Consumer Protection</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               How To Avoid Moving Day Extortion
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               See why low verbal quotes often end up costing double the price on moving day.
             </p>
           </div>
@@ -380,8 +380,8 @@ const GetQuote = () => {
               <thead className="bg-surface border-b border-border text-text font-display font-bold">
                 <tr>
                   <th className="p-4 sm:p-5 w-1/4">Moving Parameter</th>
-                  <th className="p-4 sm:p-5 w-3/8 text-red-600 bg-red-500/5">
-                    Unorganized Low-Ball Movers
+                  <th className="p-4 sm:p-5 w-3/8 text-text-muted bg-surface">
+                    Informal Market Practice
                   </th>
                   <th className="p-4 sm:p-5 w-3/8 text-primary bg-primary/5">
                     1st Om Binding Standards
@@ -394,15 +394,12 @@ const GetQuote = () => {
                     <td className="p-4 sm:p-5 font-bold text-text align-top">
                       {row.feature}
                     </td>
-                    <td className="p-4 sm:p-5 text-text-muted bg-red-500/5 align-top leading-relaxed">
-                      <div className="flex items-start gap-2">
-                        <span className="text-red-500 font-bold">✕</span>
-                        <span>{row.unorganized}</span>
-                      </div>
+                    <td className="p-4 sm:p-5 text-text-muted bg-surface/40 align-top leading-relaxed">
+                      <p>{row.unorganized}</p>
                     </td>
                     <td className="p-4 sm:p-5 text-text bg-primary/5 font-medium align-top leading-relaxed">
                       <div className="flex items-start gap-2">
-                        <span className="text-green-600 font-bold">✓</span>
+                        <CheckCircle2 size={15} className="text-primary shrink-0 mt-0.5" />
                         <span>{row.firstOm}</span>
                       </div>
                     </td>

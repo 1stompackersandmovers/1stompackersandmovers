@@ -433,15 +433,15 @@ const Contact = () => {
       <section className="bg-background py-14 sm:py-20 border-b border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
               <Send size={13} className="text-accent" />
               <span>Personalized Dispatch</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               Send a Message or Choose Your Department
             </h2>
-            <p className="text-text-muted text-sm sm:text-base">
+            <p className="text-text-muted text-sm sm:text-base max-w-2xl mx-auto text-balance">
               Direct routing ensures your inquiry reaches the right logistics specialist immediately.
             </p>
           </div>
@@ -897,15 +897,15 @@ const Contact = () => {
       <section className="bg-background py-14 sm:py-20 border-b border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
               <Clock size={13} className="text-accent" />
               <span>Response Standard</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               What Happens When You Reach Out?
             </h2>
-            <p className="text-text-muted text-sm sm:text-base">
+            <p className="text-text-muted text-sm sm:text-base max-w-2xl mx-auto text-balance">
               Moving shouldn&apos;t feel uncertain. Here is our exact step-by-step commitment when you connect.
             </p>
           </div>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -30,372 +30,30 @@ import SEO from "../../../../configs/seo";
 import { company } from "../../../../data/company";
 import Button from "../../shared/components/Button";
 
-// Move estimator configurations
-const estimatorOptions = [
-  {
-    id: "1bhk",
-    label: "1 BHK Apartment",
-    icon: Home,
-    localPrice: "₹3,500 - ₹6,500",
-    interstatePrice: "₹8,500 - ₹17,500",
-    truck: "10ft - 14ft Closed Container",
-    crew: "2-3 Verified Packers",
-    duration: "4-6 Hours (Local) / 2-3 Days (Interstate)",
-  },
-  {
-    id: "2bhk",
-    label: "2 BHK Apartment",
-    icon: Home,
-    localPrice: "₹5,500 - ₹10,000",
-    interstatePrice: "₹14,000 - ₹27,500",
-    truck: "14ft - 17ft Closed Container",
-    crew: "3-4 Verified Packers",
-    duration: "6-8 Hours (Local) / 3-4 Days (Interstate)",
-  },
-  {
-    id: "3bhk",
-    label: "3 BHK Apartment",
-    icon: Home,
-    localPrice: "₹8,500 - ₹16,000",
-    interstatePrice: "₹22,000 - ₹42,000",
-    truck: "19ft - 22ft Dedicated Truck",
-    crew: "4-6 Verified Packers",
-    duration: "Full Day (Local) / 3-5 Days (Interstate)",
-  },
-  {
-    id: "4bhk",
-    label: "4+ BHK / Villa",
-    icon: Home,
-    localPrice: "₹14,000 - ₹26,000",
-    interstatePrice: "₹34,000 - ₹65,000+",
-    truck: "24ft - 32ft Multi-Axle Carrier",
-    crew: "6-8 Verified Packers",
-    duration: "1-2 Days (Local) / 4-6 Days (Interstate)",
-  },
-  {
-    id: "bike",
-    label: "Two-Wheeler / Bike",
-    icon: Bike,
-    localPrice: "₹1,500 - ₹2,800",
-    interstatePrice: "₹3,500 - ₹6,800",
-    truck: "Specialized Crated Carrier",
-    crew: "2 Specialized Handlers",
-    duration: "Same Day (Local) / 3-5 Days (Interstate)",
-  },
-  {
-    id: "car",
-    label: "Car / Sedan / SUV",
-    icon: Car,
-    localPrice: "₹2,500 - ₹4,500",
-    interstatePrice: "₹9,500 - ₹22,000",
-    truck: "Hydraulic Enclosed Car Carrier",
-    crew: "Vehicle Logistics Specialist",
-    duration: "Same Day (Local) / 4-7 Days (Interstate)",
-  },
-  {
-    id: "office",
-    label: "Office / Commercial",
-    icon: Building2,
-    localPrice: "₹9,000 - ₹28,000+",
-    interstatePrice: "₹28,000 - ₹85,000+",
-    truck: "Dedicated Multi-Fleet Convoy",
-    crew: "IT & Modular Relocation Team",
-    duration: "Weekend / Overnight Shift",
-  },
-];
+import {
+  estimatorOptions as rawEstimatorOptions,
+  pricingTabs,
+  localHouseholdRates,
+  interstateCorridors,
+  vehicleRates,
+  addOnServices,
+  inclusionsVsExtras,
+  scamComparison,
+  pricingFaqs,
+} from "../../../../data/pricing";
 
-// Tabbed pricing tables
-const pricingTabs = [
-  { id: "local", label: "Local Home Shifting" },
-  { id: "interstate", label: "Interstate Corridors" },
-  { id: "vehicles", label: "Vehicle Transport" },
-  { id: "addons", label: "Add-Ons & Services" },
-];
+const ICON_MAP = {
+  home: Home,
+  bike: Bike,
+  car: Car,
+  office: Building2,
+};
 
-const localHouseholdRates = [
-  {
-    size: "1 BHK (Studio / 1 Bedroom)",
-    packing: "5-ply cartons, bubble wrap & cling film",
-    vehicle: "Tata Ace / 10ft Closed Container",
-    crew: "2-3 Men",
-    time: "4 - 6 Hours",
-    priceRange: "₹3,500 - ₹6,500",
-    slug: "home-shifting",
-  },
-  {
-    size: "2 BHK (Standard Apartment)",
-    packing: "Heavy corrugated sheets, foam & cartons",
-    vehicle: "14ft - 17ft Closed Container",
-    crew: "3-4 Men",
-    time: "6 - 8 Hours",
-    priceRange: "₹5,500 - ₹10,000",
-    slug: "home-shifting",
-  },
-  {
-    size: "3 BHK (Large Apartment)",
-    packing: "Multi-layer furniture padding & crating",
-    vehicle: "19ft Dedicated Closed Truck",
-    crew: "4-6 Men",
-    time: "1 Full Day",
-    priceRange: "₹8,500 - ₹16,000",
-    slug: "home-shifting",
-  },
-  {
-    size: "4+ BHK / Independent Villa",
-    packing: "Comprehensive master packing & wardrobe boxes",
-    vehicle: "22ft - 32ft Container or 2 Trucks",
-    crew: "6-8 Men",
-    time: "1 - 2 Days",
-    priceRange: "₹14,000 - ₹26,000",
-    slug: "home-shifting",
-  },
-];
+const estimatorOptions = rawEstimatorOptions.map((opt) => ({
+  ...opt,
+  icon: ICON_MAP[opt.iconKey] || Home,
+}));
 
-const interstateCorridors = [
-  {
-    corridor: "Bihar to Delhi NCR (Gurgaon, Noida, Delhi)",
-    distance: "~1,050 km",
-    transit: "2 - 3 Days",
-    truckType: "Dedicated Sealed Container",
-    range1BHK: "₹12,000 - ₹18,000",
-    range2BHK: "₹18,000 - ₹28,000",
-    range3BHK: "₹28,000 - ₹48,000",
-  },
-  {
-    corridor: "Bihar to West Bengal (Kolkata, Siliguri)",
-    distance: "~580 km",
-    transit: "1 - 2 Days",
-    truckType: "Dedicated Sealed Container",
-    range1BHK: "₹9,000 - ₹14,000",
-    range2BHK: "₹14,000 - ₹22,000",
-    range3BHK: "₹22,000 - ₹36,000",
-  },
-  {
-    corridor: "Bihar to Jharkhand (Ranchi, Jamshedpur, Dhanbad)",
-    distance: "~340 km",
-    transit: "1 Day (Overnight)",
-    truckType: "Dedicated Sealed Container",
-    range1BHK: "₹7,500 - ₹12,000",
-    range2BHK: "₹11,000 - ₹18,000",
-    range3BHK: "₹18,000 - ₹30,000",
-  },
-  {
-    corridor: "Bihar to Uttar Pradesh (Lucknow, Kanpur, Varanasi)",
-    distance: "~520 km",
-    transit: "1 - 2 Days",
-    truckType: "Dedicated Sealed Container",
-    range1BHK: "₹8,500 - ₹13,500",
-    range2BHK: "₹13,000 - ₹21,000",
-    range3BHK: "₹21,000 - ₹35,000",
-  },
-  {
-    corridor: "Bihar to Maharashtra (Mumbai, Pune, Nagpur)",
-    distance: "~1,850 km",
-    transit: "4 - 5 Days",
-    truckType: "Dedicated Sealed Container",
-    range1BHK: "₹18,000 - ₹28,000",
-    range2BHK: "₹26,000 - ₹42,000",
-    range3BHK: "₹40,000 - ₹72,000",
-  },
-  {
-    corridor: "Bihar to Karnataka & South (Bengaluru, Hyderabad)",
-    distance: "~2,050 km",
-    transit: "4 - 6 Days",
-    truckType: "Dedicated Sealed Container",
-    range1BHK: "₹20,000 - ₹32,000",
-    range2BHK: "₹28,000 - ₹48,000",
-    range3BHK: "₹45,000 - ₹80,000",
-  },
-];
-
-const vehicleRates = [
-  {
-    vehicleType: "Standard Bike / Scooter (100cc - 150cc)",
-    method: "Timber Crate Packaging + Bubble Foam",
-    insurance: "Included (Up to ₹50,000 declared)",
-    localRate: "₹1,500 - ₹2,500",
-    interstateRate: "₹3,500 - ₹5,500",
-    slug: "bike-transportation",
-  },
-  {
-    vehicleType: "Sports / Cruiser Motorcycle (200cc - 500cc+)",
-    method: "Reinforced Heavy Timber Crate",
-    insurance: "Included (Up to ₹1,50,000 declared)",
-    localRate: "₹2,000 - ₹3,200",
-    interstateRate: "₹4,800 - ₹8,000",
-    slug: "bike-transportation",
-  },
-  {
-    vehicleType: "Hatchback Car (Swift, i10, Baleno, Tiago)",
-    method: "Hydraulic Enclosed Multi-Car Carrier",
-    insurance: "Transit Insurance with Pre-Inspection",
-    localRate: "₹2,500 - ₹3,800",
-    interstateRate: "₹8,500 - ₹15,000",
-    slug: "car-transportation",
-  },
-  {
-    vehicleType: "Sedan Car (City, Verna, Ciaz, Slavia)",
-    method: "Hydraulic Enclosed Multi-Car Carrier",
-    insurance: "Transit Insurance with Pre-Inspection",
-    localRate: "₹2,800 - ₹4,200",
-    interstateRate: "₹10,500 - ₹18,000",
-    slug: "car-transportation",
-  },
-  {
-    vehicleType: "SUV / Luxury EV (Creta, Fortuner, XUV700)",
-    method: "Hydraulic Enclosed Carrier (Dedicated Slot)",
-    insurance: "Transit Insurance with Pre-Inspection",
-    localRate: "₹3,500 - ₹5,000",
-    interstateRate: "₹13,500 - ₹24,000",
-    slug: "car-transportation",
-  },
-];
-
-const addOnServices = [
-  {
-    service: "Packing & Unpacking Labor Only",
-    description: "Export-grade cartons, bubble wrap & professional packers without transport",
-    rate: "₹1,800 - ₹10,000",
-    unit: "Per move based on items",
-    slug: "packing-unpacking",
-  },
-  {
-    service: "Loading & Unloading Crew Only",
-    description: "Trained crew with appliance dollies and lifting straps for client's vehicle",
-    rate: "₹1,500 - ₹7,500",
-    unit: "Per shift / floor levels",
-    slug: "loading-unloading",
-  },
-  {
-    service: "Secure Warehousing & Storage",
-    description: "Moisture-free, 24/7 CCTV guarded warehouse bays with barcode inventory",
-    rate: "₹1,200 - ₹8,500",
-    unit: "Per month / volume",
-    slug: "warehousing-storage",
-  },
-  {
-    service: "Wooden Crating for Delicate Goods",
-    description: "Custom carpentry timber box for LED TVs (>55\"), crystal chandeliers & mirrors",
-    rate: "₹1,200 - ₹3,500",
-    unit: "Per crated article",
-    slug: "packing-unpacking",
-  },
-  {
-    service: "Comprehensive Goods Transit Insurance",
-    description: "All-risk 100% declared valuation policy with fast company-assisted claims",
-    rate: "1.5% of Declared Value",
-    unit: "Optional add-on",
-    slug: "goods-insurance",
-  },
-];
-
-const inclusionsVsExtras = [
-  {
-    feature: "5-Ply Virgin Corrugated Cartons & Bubble Wrap",
-    included: true,
-    note: "All standard boxes, tape, and padding are included in your quote.",
-  },
-  {
-    feature: "Dedicated Closed-Body Container Truck",
-    included: true,
-    note: "Your goods never share space with another family's consignment.",
-  },
-  {
-    feature: "Full Loading, Transport & Room-by-Room Unloading",
-    included: true,
-    note: "Items placed directly in the respective bedrooms and living spaces.",
-  },
-  {
-    feature: "Basic Furniture Dismantling & Reassembly",
-    included: true,
-    note: "Double beds, dining tables, and modular furniture dismantled and rebuilt.",
-  },
-  {
-    feature: "Highway Toll Taxes, Fuel Surcharges & Driver Allowance",
-    included: true,
-    note: "No surprise toll bills or driver meal charges requested on the road.",
-  },
-  {
-    feature: "Dedicated Move Coordinator with WhatsApp Updates",
-    included: true,
-    note: "Single point of contact from pre-move survey to delivery.",
-  },
-  {
-    feature: "Wooden Crating for Large LED TVs (>55\") & Crystal Mirrors",
-    included: false,
-    note: "Quoted transparently at ₹1,200-₹3,500 per item if needed.",
-  },
-  {
-    feature: "Manual Rope Hoisting (if no elevator & narrow stairwells)",
-    included: false,
-    note: "Quoted upfront if balcony hoisting is necessary for oversized sofas.",
-  },
-  {
-    feature: "All-Risk Transit Insurance Policy",
-    included: false,
-    note: "Calculated transparently at 1.5% of your declared inventory valuation.",
-  },
-  {
-    feature: "Extended Warehousing Storage Beyond Transit Window",
-    included: false,
-    note: "Billed on flexible weekly or monthly terms from ₹1,200/mo.",
-  },
-];
-
-const scamComparison = [
-  {
-    aspect: "Initial Quoted Price",
-    scam: "Artificially low bait quote (₹2,500 - ₹3,500) given over the phone without questions.",
-    firstOm: "Transparent, realistic estimate based on inventory volume, distance & floor access.",
-  },
-  {
-    aspect: "Moving Day Cartons & Tape",
-    scam: "Arrives with minimal supplies; demands ₹3,000-₹5,000 extra for 'special boxes & tape'.",
-    firstOm: "100% all-inclusive. All boxes, bubble wrap, and stretch film are covered in the quote.",
-  },
-  {
-    aspect: "Stairs & Floor Surcharges",
-    scam: "Demands extra ₹500-₹1,000 per floor suddenly midway through carrying furniture.",
-    firstOm: "Survey accounts for floor access upfront. Zero surprise surcharge on moving day.",
-  },
-  {
-    aspect: "Vehicle Allocation",
-    scam: "Goods co-loaded in open-top trucks with strangers' cargo; risk of loss or water damage.",
-    firstOm: "100% dedicated closed container locked and sealed exclusively for your family.",
-  },
-  {
-    aspect: "Final Amount Paid",
-    scam: "Ends up costing 2x-3x more than quoted, with goods held hostage until paid in cash.",
-    firstOm: "Exact binding quote agreed prior to packing. Transparent payment with official invoice.",
-  },
-];
-
-const pricingFaqs = [
-  {
-    q: "Why do moving quotes differ between two similar 2 BHK apartments?",
-    a: "Every household is unique. Relocation pricing depends on the actual physical volume (cubic feet) of furniture, quantity of delicate glassware or electronics requiring custom crating, floor levels and elevator availability at both locations, walking distance from truck to doorway, and total transit distance. A pre-move survey ensures you receive an accurate, binding quote tailored to your exact inventory.",
-  },
-  {
-    q: "Are packing materials and cartons included in the written price?",
-    a: "Yes. All standard packing supplies - including export-grade 5-ply cartons, bubble wrap, stretch film, heavy corrugated sheets, and industrial sealing tape - are fully covered in your written quotation. There are zero surprise box fees on moving day.",
-  },
-  {
-    q: "Do I have to pay an advance before the survey is conducted?",
-    a: "No. Our pre-move surveys (both in-person and video call) are 100% complimentary with zero booking fees and zero obligation. You only confirm with a standard booking token once you are completely satisfied with our written itemized quote.",
-  },
-  {
-    q: "Can you provide an official GST invoice for corporate relocation reimbursement?",
-    a: "Yes, absolutely. 1st Om Packers and Movers Pvt. Ltd. is a legally registered corporate entity. We issue full GST-compliant tax invoices, consignment notes (LR copy), and itemized packing lists required for employer relocation reimbursements.",
-  },
-  {
-    q: "What happens if my relocation date changes? Is there a cancellation fee?",
-    a: "We understand moving schedules can shift. You can reschedule your moving date with 24 hours prior notice with zero cancellation or rescheduling penalties before the dedicated vehicle is dispatched.",
-  },
-  {
-    q: "How is Goods Transit Insurance calculated and is it compulsory?",
-    a: "Transit insurance is optional but strongly recommended for long-distance and interstate moves. The premium is calculated at 1.5% of your declared consignment value. In the rare event of transit damage, our dedicated coordinator manages the paperless claim directly with the insurance provider.",
-  },
-];
 
 const Pricing = () => {
   const [activeTab, setActiveTab] = useState("local");
@@ -532,15 +190,15 @@ const Pricing = () => {
       <section className="bg-background py-12 sm:py-20 border-b border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-10 sm:mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
               <Zap size={14} className="text-accent" />
               <span>Real-Time Relocation Calculator</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               Estimate Your Relocation Cost in 30 Seconds
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               Adjust your consignment size, distance scope, and add-on preferences to view realistic price brackets.
             </p>
           </div>
@@ -962,15 +620,15 @@ const Pricing = () => {
       <section className="bg-background py-14 sm:py-20 border-b border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-bold uppercase tracking-wider mb-3">
               <CheckCircle2 size={14} />
               <span>100% Bill Transparency</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               What Is Included In Every Quote vs. Optional Extras
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               We eliminate unexpected moving-day arguments by declaring every deliverable in writing before packing begins.
             </p>
           </div>
@@ -1036,49 +694,48 @@ const Pricing = () => {
       <section className="bg-surface py-14 sm:py-20 border-b border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-600 text-xs font-bold uppercase tracking-wider mb-3">
               <ShieldAlert size={14} />
               <span>Consumer Protection Notice</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               Beware of Low-Ball Estimates: The Hidden Cost Trap
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               Unverified aggregators lure customers with a fake low quote, then extort money once your goods are inside their truck.
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto bg-background rounded-2xl border border-border shadow-xs overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-3 bg-primary text-white p-4 font-display font-bold text-xs uppercase tracking-wider">
-              <div className="hidden md:block">Cost Consideration</div>
-              <div className="text-accent flex items-center gap-1.5">
-                <CheckCircle2 size={15} />
-                <span>1st Om Upfront Pricing</span>
-              </div>
-              <div className="text-white/60 flex items-center gap-1.5 mt-2 md:mt-0">
-                <ShieldAlert size={15} />
-                <span>Low-Ball Aggregator Scams</span>
-              </div>
-            </div>
-
-            <div className="divide-y divide-border">
-              {scamComparison.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-3 p-4 sm:p-5 gap-3 text-xs">
-                  <div className="font-bold text-text flex items-center">
-                    {item.aspect}
-                  </div>
-                  <div className="text-text bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/20 font-medium">
-                    <span className="md:hidden font-bold block text-emerald-600 mb-1">1st Om:</span>
-                    {item.firstOm}
-                  </div>
-                  <div className="text-text-muted bg-red-500/5 p-3 rounded-lg border border-red-500/10">
-                    <span className="md:hidden font-bold block text-red-500 mb-1">Other Movers:</span>
-                    {item.scam}
-                  </div>
-                </div>
-              ))}
-            </div>
+          {/* Clean Open Comparison Table (Zero Box Loop, Clean Enterprise Alignment) */}
+          <div className="max-w-4xl mx-auto overflow-x-auto">
+            <table className="w-full text-left text-xs sm:text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border text-text font-display font-bold">
+                  <th className="py-3.5 pr-4 w-1/4">Cost Parameter</th>
+                  <th className="py-3.5 px-4 w-3/8 text-primary font-bold">1st Om Binding Standards</th>
+                  <th className="py-3.5 pl-4 w-3/8 text-text-muted">Informal Market Practice</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {scamComparison.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-background/40 transition-colors">
+                    <td className="py-4 pr-4 font-bold text-text align-top">
+                      {item.aspect}
+                    </td>
+                    <td className="py-4 px-4 text-text font-medium align-top leading-relaxed">
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 size={16} className="text-primary shrink-0 mt-0.5" />
+                        <span>{item.firstOm}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 pl-4 text-text-muted align-top leading-relaxed">
+                      {item.scam}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
         </div>

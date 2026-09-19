@@ -1,16 +1,41 @@
-# React + Vite
+# 1st Om Packers and Movers — Frontend Web Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+High-performance, mobile-first React application built for **1st Om Packers and Movers Pvt. Ltd.**
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🧭 Pages Architecture (168 Total Pages)
 
-## React Compiler
+* **Places & Location Pages (151 Pages)**:
+  * `/where-we-serve` — Central Interactive Directory & State Filter (1 page)
+  * `/packers-movers-:slug` — City & District Landing Pages (114 pages across Bihar, Jharkhand, UP, Delhi NCR, WB & Metros)
+  * `/route/:slug` — High-Intent Interstate Corridor Pages (36 pages connecting key hubs to major Indian cities)
+* **Core & Lead Capture Pages (7 Pages)**:
+  * `/` (Home), `/about`, `/pricing`, `/contact`, `/get-quote`, `/privacy`, `/terms`
+* **Services (9 Pages)**:
+  * `/services` hub + 8 specific service detail pages (`/services/:slug`)
+* **Utility (1 Page)**:
+  * `/search` — Live client-side instant search
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 💰 Centralized Pricing Engine (`src/data/pricing.js`)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+**Single Source of Truth**: All rates, estimator parameters, local shifting tiers, interstate corridor prices, vehicle transport, and add-on rates are maintained in `src/data/pricing.js`.
+Components (`Pricing.jsx`, `LocationPage.jsx`, `RoutePage.jsx`, `QuoteForm.jsx`) import directly from this file. A change made in `pricing.js` instantly reflects across all 168 pages without component-level edits.
+
+---
+
+## 🛠️ Development & Build
+
+```bash
+# Install dependencies
+npm install
+
+# Run dev server
+npm run dev
+
+# Build for production
+npm run build
+```
+

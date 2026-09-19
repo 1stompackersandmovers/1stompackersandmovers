@@ -309,15 +309,15 @@ const About = () => {
       <section className="bg-surface py-14 sm:py-20 border-b border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
+          <div className="text-center max-w-4xl mx-auto mb-12 sm:mb-16">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
               <Award size={14} className="text-accent" />
               <span>Our Operating Philosophy</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               How We Work Differently
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               We eliminated the chaos of traditional relocation with strict, uncompromised standards.
             </p>
           </div>
@@ -364,15 +364,15 @@ const About = () => {
       <section className="bg-background py-14 sm:py-20 border-b border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-bold uppercase tracking-wider mb-3">
               <ShieldCheck size={14} />
               <span>Proven Execution Track Record</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               Numbers That Speak For Themselves
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               Real, verifiable milestones built over thousands of successful household and corporate shifts.
             </p>
           </div>
@@ -409,15 +409,15 @@ const About = () => {
       <section className="bg-surface py-14 sm:py-20 border-b border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
               <Truck size={14} className="text-accent" />
               <span>The Machinery of Safety</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               How We Protect Every Item in Transit
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               Safety isn&apos;t an accident - it&apos;s the result of purpose-built equipment and military-precision materials.
             </p>
           </div>

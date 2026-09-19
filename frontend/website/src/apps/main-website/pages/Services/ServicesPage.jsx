@@ -740,15 +740,15 @@ const ServicesPage = () => {
       <section className="bg-surface py-12 sm:py-20 border-y border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
+          <div className="text-center max-w-4xl mx-auto mb-10 sm:mb-12">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/15 text-accent-foreground text-xs font-bold uppercase tracking-wider mb-3">
               <BadgePercent size={14} className="text-accent" />
               <span>Transparent Cost Forecaster</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               Estimate Your Relocation Cost Instantly
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               Select your consignment size and move route to get a realistic, zero-obligation cost guideline.
             </p>
           </div>
@@ -868,15 +868,15 @@ const ServicesPage = () => {
       <section className="bg-background py-14 sm:py-20 border-b border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
+          <div className="text-center max-w-4xl mx-auto mb-12 sm:mb-16">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
               <Zap size={14} className="text-accent" />
               <span>Standard Operating Procedure</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               How We Ensure A Zero-Damage Move
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               Our military-precision 4-step relocation protocol guarantees complete security from door to door.
             </p>
           </div>
@@ -944,49 +944,48 @@ const ServicesPage = () => {
       <section className="bg-surface py-14 sm:py-20 border-b border-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-xs font-bold uppercase tracking-wider mb-3">
+          <div className="text-center max-w-4xl mx-auto mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-3">
               <ShieldCheck size={14} />
               <span>Safety & Value Comparison</span>
             </div>
-            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3">
+            <h2 className="font-display font-extrabold text-text text-2xl sm:text-3xl tracking-tight mb-3 text-balance">
               Why Choosing 1st Om Protects You
             </h2>
-            <p className="text-text-muted text-xs sm:text-sm">
+            <p className="text-text-muted text-xs sm:text-sm max-w-2xl mx-auto text-balance">
               Don&apos;t risk damaged furniture or unexpected moving-day extortion from unverified aggregators.
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto bg-background rounded-2xl border border-border shadow-xs overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-3 bg-primary text-white p-4 font-display font-bold text-xs uppercase tracking-wider">
-              <div className="hidden md:block">Key Consideration</div>
-              <div className="text-accent flex items-center gap-1.5">
-                <CheckCircle2 size={15} />
-                <span>1st Om Packers & Movers</span>
-              </div>
-              <div className="text-white/60 flex items-center gap-1.5 mt-2 md:mt-0">
-                <ShieldAlert size={15} />
-                <span>Unverified Local Movers</span>
-              </div>
-            </div>
-
-            <div className="divide-y divide-border">
-              {comparisonPoints.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-3 p-4 sm:p-5 gap-3 text-xs">
-                  <div className="font-bold text-text flex items-center">
-                    {item.feature}
-                  </div>
-                  <div className="text-text bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/20 font-medium">
-                    <span className="md:hidden font-bold block text-emerald-600 mb-1">1st Om:</span>
-                    {item.us}
-                  </div>
-                  <div className="text-text-muted bg-red-500/5 p-3 rounded-lg border border-red-500/10">
-                    <span className="md:hidden font-bold block text-red-500 mb-1">Other Movers:</span>
-                    {item.others}
-                  </div>
-                </div>
-              ))}
-            </div>
+          {/* Clean Open Comparison Table (Zero Box Loop, Clean Institutional Alignment) */}
+          <div className="max-w-4xl mx-auto overflow-x-auto">
+            <table className="w-full text-left text-xs sm:text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border text-text font-display font-bold">
+                  <th className="py-3.5 pr-4 w-1/4">Key Consideration</th>
+                  <th className="py-3.5 px-4 w-3/8 text-primary font-bold">1st Om Binding Standards</th>
+                  <th className="py-3.5 pl-4 w-3/8 text-text-muted">Informal Market Practice</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {comparisonPoints.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-background/40 transition-colors">
+                    <td className="py-4 pr-4 font-bold text-text align-top">
+                      {item.feature}
+                    </td>
+                    <td className="py-4 px-4 text-text font-medium align-top leading-relaxed">
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 size={16} className="text-primary shrink-0 mt-0.5" />
+                        <span>{item.us}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 pl-4 text-text-muted align-top leading-relaxed">
+                      {item.others}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
         </div>

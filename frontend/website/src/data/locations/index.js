@@ -85,3 +85,8 @@ export const placeImages = {
  * All routes — used for sitemap + route pages
  */
 export { interstateRoutes as allRoutes };
+
+/**
+ * Hyper-local profile and metadata helpers
+ */
+export { locationProfiles, getLocationProfile } from "./contextData";

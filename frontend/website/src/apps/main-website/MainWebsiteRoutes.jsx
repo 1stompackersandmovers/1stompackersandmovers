@@ -28,11 +28,12 @@ const MainWebsiteRoutes = () => {
         <Route path="contact" element={<Contact />} />
         <Route path="get-quote" element={<GetQuote />} />
         <Route path="where-we-serve" element={<WhereWeServe />} />
-        <Route path="packers-movers-:slug" element={<LocationPage />} />
+        <Route path="packers-movers/:slug" element={<LocationPage />} />
         <Route path="route/:slug" element={<RoutePage />} />
         <Route path="privacy" element={<Privacy />} />
         <Route path="terms" element={<Terms />} />
         <Route path="search" element={<SearchPage />} />
+        <Route path=":slug" element={<LocationPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

@@ -10,11 +10,17 @@ import {
   MapPin,
   Truck,
   ArrowRight,
+  ArrowLeftRight,
+  Shield,
+  Clock,
 } from "lucide-react";
 import CustomSelect from "../../../shared/components/CustomSelect";
 import Button from "../../../shared/components/Button";
 import TopoField from "@/components/ui/topo-field";
 import { company } from "@/data/company";
+import LocationAutocomplete from "./LocationAutocomplete";
+import { detectUserCity, detectFromBrowserGps } from "@/apps/main-website/utils/geoService";
+import { calculateFareEstimate } from "@/apps/main-website/utils/fareEstimator";
 
 const moveTypes = [
   "Within the city",
@@ -111,18 +117,64 @@ const TIMELINE_MAP = {
   "flexible": "Not fixed yet",
 };
 
+const moveSizes = [
+  "1 BHK (1 Bedroom / Studio)",
+  "2 BHK (Standard Apartment)",
+  "3 BHK (Large Apartment)",
+  "4+ BHK / Independent Villa",
+  "Few Items / Single Room",
+  "Car / Vehicle Only",
+  "Bike / Two-Wheeler Only",
+  "Office / Commercial Setup",
+];
+
+const MOVE_SIZE_MAP = {
+  "1bhk": "1 BHK (1 Bedroom / Studio)",
+  "1-bhk": "1 BHK (1 Bedroom / Studio)",
+  "1bhk apartment": "1 BHK (1 Bedroom / Studio)",
+  "studio": "1 BHK (1 Bedroom / Studio)",
+  "1rk": "1 BHK (1 Bedroom / Studio)",
+  "2bhk": "2 BHK (Standard Apartment)",
+  "2-bhk": "2 BHK (Standard Apartment)",
+  "2bhk apartment": "2 BHK (Standard Apartment)",
+  "3bhk": "3 BHK (Large Apartment)",
+  "3-bhk": "3 BHK (Large Apartment)",
+  "3bhk apartment": "3 BHK (Large Apartment)",
+  "4bhk": "4+ BHK / Independent Villa",
+  "4-bhk": "4+ BHK / Independent Villa",
+  "4+bhk": "4+ BHK / Independent Villa",
+  "villa": "4+ BHK / Independent Villa",
+  "few-items": "Few Items / Single Room",
+  "single-room": "Few Items / Single Room",
+  "car": "Car / Vehicle Only",
+  "bike": "Bike / Two-Wheeler Only",
+  "office": "Office / Commercial Setup",
+  "commercial": "Office / Commercial Setup",
+};
+
 const initialForm = {
   name: "",
   phone: "",
   movingFrom: "",
   movingTo: "",
   moveType: "",
-  service: "",
+  service: "Home shifting",
+  moveSize: "",
   timeline: "",
   email: "",
 };
 
 // Resolver helper functions
+function resolveMoveSize(val) {
+  if (!val) return "";
+  const cleaned = val.trim().toLowerCase();
+  if (MOVE_SIZE_MAP[cleaned]) return MOVE_SIZE_MAP[cleaned];
+  const exact = moveSizes.find((m) => m.toLowerCase() === cleaned);
+  if (exact) return exact;
+  const partial = moveSizes.find((m) => m.toLowerCase().includes(cleaned) || cleaned.includes(m.toLowerCase()));
+  return partial || "";
+}
+
 function resolveService(val) {
   if (!val) return "";
   const cleaned = val.trim().toLowerCase();
@@ -165,27 +217,38 @@ const QuoteForm = ({
   defaultTo = "",
   defaultMoveType = "",
   defaultTimeline = "",
+  defaultMoveSize = "",
   isStandalonePage = false,
 }) => {
   const [searchParams] = useSearchParams();
   const [form, setForm] = useState(initialForm);
   const [status, setStatus] = useState("idle"); // idle | submitting | success | error
   const [errors, setErrors] = useState({});
-  const [autoDetected, setAutoDetected] = useState(false);
 
   // Sync state with URL query parameters and incoming props
   useEffect(() => {
-    const pService = searchParams.get("service") || searchParams.get("s") || searchParams.get("type") || defaultService;
+    const pService = searchParams.get("service") || searchParams.get("s") || defaultService;
     const pFrom = searchParams.get("from") || searchParams.get("origin") || searchParams.get("source") || searchParams.get("pickup") || defaultFrom;
     const pTo = searchParams.get("to") || searchParams.get("dest") || searchParams.get("destination") || searchParams.get("drop") || defaultTo;
     const pScope = searchParams.get("scope") || searchParams.get("moveType") || defaultMoveType;
     const pTimeline = searchParams.get("timeline") || searchParams.get("time") || defaultTimeline;
+    const pSize = searchParams.get("size") || searchParams.get("moveSize") || searchParams.get("bhk") || searchParams.get("type") || defaultMoveSize;
 
     let resolvedService = resolveService(pService);
     let resolvedMoveType = resolveMoveType(pScope);
     const resolvedTimeline = resolveTimeline(pTimeline);
+    const resolvedMoveSize = resolveMoveSize(pSize);
     const resolvedFrom = pFrom ? decodeURIComponent(pFrom).trim() : "";
     const resolvedTo = pTo ? decodeURIComponent(pTo).trim() : "";
+
+    // If a size like 1bhk, 2bhk was provided but no service, associate with Home shifting
+    if (!resolvedService && pSize) {
+      const lower = pSize.toLowerCase();
+      if (lower.includes("car")) resolvedService = "Car transport";
+      else if (lower.includes("bike") || lower.includes("wheeler")) resolvedService = "Bike transport";
+      else if (lower.includes("office") || lower.includes("commercial")) resolvedService = "Office shifting";
+      else if (lower.includes("bhk") || lower.includes("villa") || lower.includes("home") || lower.includes("room")) resolvedService = "Home shifting";
+    }
 
     // Smart inference: if from and to are present, deduce moveType if not explicit
     if (!resolvedMoveType && resolvedFrom && resolvedTo) {
@@ -199,7 +262,7 @@ const QuoteForm = ({
     }
 
     const hasAnyDetected = Boolean(
-      resolvedService || resolvedFrom || resolvedTo || resolvedMoveType || resolvedTimeline
+      resolvedService || resolvedFrom || resolvedTo || resolvedMoveType || resolvedTimeline || resolvedMoveSize
     );
 
     setForm((prev) => ({
@@ -208,13 +271,33 @@ const QuoteForm = ({
       movingFrom: resolvedFrom || prev.movingFrom,
       movingTo: resolvedTo || prev.movingTo,
       moveType: resolvedMoveType || prev.moveType,
+      moveSize: resolvedMoveSize || prev.moveSize,
       timeline: resolvedTimeline || prev.timeline,
     }));
+  }, [searchParams, defaultService, defaultFrom, defaultTo, defaultMoveType, defaultTimeline, defaultMoveSize]);
 
-    if (hasAnyDetected) {
-      setAutoDetected(true);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+
+  // Silent edge geo-detection on mount if no explicit origin is provided
+  useEffect(() => {
+    const hasExplicitFrom =
+      searchParams.get("from") ||
+      searchParams.get("origin") ||
+      searchParams.get("source") ||
+      searchParams.get("pickup") ||
+      defaultFrom;
+
+    if (!hasExplicitFrom && !form.movingFrom) {
+      detectUserCity().then((geo) => {
+        if (geo && geo.formatted) {
+          setForm((prev) => {
+            if (prev.movingFrom) return prev;
+            return { ...prev, movingFrom: geo.formatted };
+          });
+        }
+      });
     }
-  }, [searchParams, defaultService, defaultFrom, defaultTo, defaultMoveType, defaultTimeline]);
+  }, [defaultFrom, searchParams]);
 
   const validate = () => {
     const errs = {};
@@ -225,7 +308,6 @@ const QuoteForm = ({
     if (!form.movingFrom.trim()) errs.movingFrom = "Please enter origin location.";
     if (!form.movingTo.trim()) errs.movingTo = "Please enter destination location.";
     if (!form.moveType) errs.moveType = "Please select a move type.";
-    if (!form.service) errs.service = "Please select a service.";
     if (!form.timeline) errs.timeline = "Please select your timeline.";
     return errs;
   };
@@ -236,20 +318,74 @@ const QuoteForm = ({
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
+  const handlePhoneChange = (e) => {
+    const rawDigits = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setForm((prev) => ({ ...prev, phone: rawDigits }));
+    if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
+  };
+
   const handleSelectChange = (fieldName, selectedValue) => {
     setForm((prev) => ({ ...prev, [fieldName]: selectedValue }));
     if (errors[fieldName]) setErrors((prev) => ({ ...prev, [fieldName]: undefined }));
   };
 
-  const handleResetPresets = () => {
-    setForm(initialForm);
-    setAutoDetected(false);
-    setErrors({});
+  const handleFromChange = (val) => {
+    setForm((prev) => {
+      let deducedMoveType = prev.moveType;
+      if (val && prev.movingTo) {
+        const f = val.toLowerCase();
+        const t = prev.movingTo.toLowerCase();
+        if (f === t) deducedMoveType = "Within the city";
+        else if (f.includes("bihar") && t.includes("bihar")) deducedMoveType = "Within the state";
+        else if (f.includes("jharkhand") && t.includes("jharkhand")) deducedMoveType = "Within the state";
+        else deducedMoveType = "To another state";
+      }
+      return { ...prev, movingFrom: val, moveType: deducedMoveType };
+    });
+    if (errors.movingFrom) setErrors((prev) => ({ ...prev, movingFrom: undefined }));
   };
 
-  const handleQuickService = (serv) => {
-    setForm((prev) => ({ ...prev, service: serv }));
-    if (errors.service) setErrors((prev) => ({ ...prev, service: undefined }));
+  const handleToChange = (val) => {
+    setForm((prev) => {
+      let deducedMoveType = prev.moveType;
+      if (prev.movingFrom && val) {
+        const f = prev.movingFrom.toLowerCase();
+        const t = val.toLowerCase();
+        if (f === t) deducedMoveType = "Within the city";
+        else if (f.includes("bihar") && t.includes("bihar")) deducedMoveType = "Within the state";
+        else if (f.includes("jharkhand") && t.includes("jharkhand")) deducedMoveType = "Within the state";
+        else deducedMoveType = "To another state";
+      }
+      return { ...prev, movingTo: val, moveType: deducedMoveType };
+    });
+    if (errors.movingTo) setErrors((prev) => ({ ...prev, movingTo: undefined }));
+  };
+
+  const handleSwapLocations = () => {
+    setForm((prev) => ({
+      ...prev,
+      movingFrom: prev.movingTo,
+      movingTo: prev.movingFrom,
+    }));
+    if (errors.movingFrom) setErrors((prev) => ({ ...prev, movingFrom: undefined }));
+    if (errors.movingTo) setErrors((prev) => ({ ...prev, movingTo: undefined }));
+  };
+
+  const handleDetectLocation = async () => {
+    setIsDetectingLocation(true);
+    try {
+      const geo = await detectFromBrowserGps();
+      if (geo && geo.formatted) {
+        handleFromChange(geo.formatted);
+      }
+    } catch {
+      const fallbackGeo = await detectUserCity();
+      if (fallbackGeo && fallbackGeo.formatted) {
+        handleFromChange(fallbackGeo.formatted);
+      }
+    } finally {
+      setIsDetectingLocation(false);
+    }
   };
 
   const handleQuickMoveType = (type) => {
@@ -258,8 +394,7 @@ const QuoteForm = ({
   };
 
   const handleQuickOrigin = (city) => {
-    setForm((prev) => ({ ...prev, movingFrom: city }));
-    if (errors.movingFrom) setErrors((prev) => ({ ...prev, movingFrom: undefined }));
+    handleFromChange(city);
   };
 
   const handleSubmit = async (e) => {
@@ -282,7 +417,6 @@ const QuoteForm = ({
       if (!res.ok) throw new Error("Server error");
       setStatus("success");
       setForm(initialForm);
-      setAutoDetected(false);
     } catch {
       // Graceful fallback for mock mode
       setStatus("success");
@@ -292,9 +426,19 @@ const QuoteForm = ({
   // Dynamic WhatsApp prefill URL for 1-click customer quote
   const whatsappUrl = useMemo(() => {
     const cleanNum = company.phone.whatsapp ? company.phone.whatsapp.replace(/\D/g, "") : "917033488691";
-    const msg = `Hi 1st Om Packers, I would like a quote for ${form.service || "relocation"} from ${form.movingFrom || "[Origin]"} to ${form.movingTo || "[Destination]"} (${form.moveType || "Standard move"}). Timeline: ${form.timeline || "Soon"}.`;
+    const sizePart = form.moveSize ? ` (${form.moveSize.split(" (")[0]})` : "";
+    const msg = `Hi 1st Om Packers, I would like a quote for ${form.service || "relocation"}${sizePart} from ${form.movingFrom || "[Origin]"} to ${form.movingTo || "[Destination]"} (${form.moveType || "Standard move"}). Timeline: ${form.timeline || "Soon"}.`;
     return `https://wa.me/${cleanNum}?text=${encodeURIComponent(msg)}`;
   }, [form]);
+
+  // Live dynamic fare estimate
+  const fareEstimate = useMemo(() => {
+    return calculateFareEstimate({
+      service: form.service,
+      moveSize: form.moveSize,
+      moveType: form.moveType,
+    });
+  }, [form.service, form.moveSize, form.moveType]);
 
   if (status === "success") {
     return (
@@ -387,60 +531,15 @@ const QuoteForm = ({
 
         {/* Card Form Container */}
         <div className="bg-white/95 backdrop-blur-md border border-border/90 rounded-3xl p-6 sm:p-10 shadow-[0_20px_60px_rgba(20,35,60,0.08)]">
-          
-          {/* Smart Auto-Detection Reassurance Pill */}
-          {autoDetected && (
-            <div className="mb-8 p-4 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-300">
-              <div className="flex items-start sm:items-center gap-2.5 text-xs sm:text-sm text-text">
-                <Zap size={16} className="text-accent fill-accent mt-0.5 sm:mt-0 shrink-0" />
-                <div className="leading-snug">
-                  <span className="font-bold text-primary">Smart Auto-Detection: </span>
-                  <span>Form pre-filled based on your selection</span>
-                  <div className="flex flex-wrap items-center gap-1.5 mt-1 font-semibold text-text">
-                    {form.service && (
-                      <span className="px-2 py-0.5 rounded-md bg-white border border-border text-[11px]">
-                        {form.service}
-                      </span>
-                    )}
-                    {form.movingFrom && (
-                      <span className="px-2 py-0.5 rounded-md bg-white border border-border text-[11px]">
-                        From: {form.movingFrom}
-                      </span>
-                    )}
-                    {form.movingTo && (
-                      <span className="px-2 py-0.5 rounded-md bg-white border border-border text-[11px]">
-                        To: {form.movingTo}
-                      </span>
-                    )}
-                    {form.moveType && (
-                      <span className="px-2 py-0.5 rounded-md bg-white border border-border text-[11px]">
-                        {form.moveType}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
 
-              <button
-                type="button"
-                onClick={handleResetPresets}
-                className="text-xs font-bold text-text-muted hover:text-danger flex items-center gap-1 shrink-0 px-2.5 py-1 rounded-lg border border-border bg-white hover:bg-surface transition-colors self-end sm:self-center"
-              >
-                <RotateCcw size={12} />
-                <span>Reset</span>
-              </button>
-            </div>
-          )}
-
-          {/* Quick-Pick Category Pills */}
-          <div className="mb-8 pb-6 border-b border-border/80">
-            <div className="flex items-center justify-between gap-2 mb-2.5">
+          {/* Service Select in One Line */}
+          <div className="mb-7 pb-5 border-b border-border/80">
+            <div className="flex items-center gap-2 mb-2">
               <label className="text-xs font-bold uppercase tracking-wider text-text-muted">
-                Quick Select Service:
+                Select Service:
               </label>
-              <span className="text-[11px] text-text-muted hidden sm:inline">Click to pre-fill</span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5 w-full">
               {[
                 { label: "Home Shifting", val: "Home shifting" },
                 { label: "Office Relocation", val: "Office shifting" },
@@ -453,10 +552,12 @@ const QuoteForm = ({
                   <button
                     key={chip.val}
                     type="button"
-                    onClick={() => handleQuickService(chip.val)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    onClick={() => {
+                      setForm((prev) => ({ ...prev, service: chip.val }));
+                    }}
+                    className={`px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors duration-200 cursor-pointer select-none active:scale-[0.98] ${
                       isSelected
-                        ? "bg-primary text-white shadow-xs"
+                        ? "bg-primary text-white border border-primary shadow-xs"
                         : "bg-surface border border-border text-text hover:border-primary/40 hover:bg-background"
                     }`}
                   >
@@ -505,23 +606,34 @@ const QuoteForm = ({
               <label htmlFor="phone" className="text-sm font-semibold text-text tracking-wide">
                 Phone number <span className="text-danger" aria-hidden="true">*</span>
               </label>
-              <input
-                id="phone"
-                name="phone"
-                type="tel"
-                autoComplete="tel"
-                inputMode="numeric"
-                value={form.phone}
-                onChange={handleChange}
-                className={`w-full px-4 py-3.5 text-[0.95rem] text-text bg-background border rounded-[var(--radius-md)] placeholder:text-text-muted transition-all duration-150 ${
-                  errors.phone
-                    ? "border-danger ring-4 ring-danger/10"
-                    : "border-border hover:border-text-muted/60 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                }`}
-                placeholder="98XXXXXXXX"
-                aria-required="true"
-                aria-describedby={errors.phone ? "phone-error" : undefined}
-              />
+              <div className="relative flex items-center">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 bg-surface border border-border/80 rounded-md text-xs font-bold text-text pointer-events-none select-none">
+                  <span>+91</span>
+                </div>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={form.phone}
+                  onChange={handlePhoneChange}
+                  className={`w-full pl-16 pr-10 py-3.5 text-[0.95rem] text-text bg-background border rounded-[var(--radius-md)] placeholder:text-text-muted transition-all duration-150 ${
+                    errors.phone
+                      ? "border-danger ring-4 ring-danger/10"
+                      : "border-border hover:border-text-muted/60 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  }`}
+                  placeholder="98XXXXXXXX"
+                  aria-required="true"
+                  aria-describedby={errors.phone ? "phone-error" : undefined}
+                />
+                {/^[6-9]\d{9}$/.test(form.phone) && (
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-success flex items-center">
+                    <CheckCircle2 size={16} />
+                  </div>
+                )}
+              </div>
               {errors.phone && (
                 <p id="phone-error" className="text-xs font-medium text-danger mt-0.5" role="alert">
                   {errors.phone}
@@ -529,94 +641,75 @@ const QuoteForm = ({
               )}
             </div>
 
-            {/* Moving From */}
+            {/* Moving From with Autocomplete & Auto-detect */}
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <label htmlFor="movingFrom" className="text-sm font-semibold text-text tracking-wide">
-                  Moving from <span className="text-danger" aria-hidden="true">*</span>
-                </label>
-              </div>
-              <input
+              <LocationAutocomplete
                 id="movingFrom"
                 name="movingFrom"
-                type="text"
+                label="Moving from"
                 value={form.movingFrom}
-                onChange={handleChange}
-                className={`w-full px-4 py-3.5 text-[0.95rem] text-text bg-background border rounded-[var(--radius-md)] placeholder:text-text-muted transition-all duration-150 ${
-                  errors.movingFrom
-                    ? "border-danger ring-4 ring-danger/10"
-                    : "border-border hover:border-text-muted/60 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                }`}
+                onChange={handleFromChange}
                 placeholder="e.g. Patna, Bihar"
-                aria-required="true"
-                aria-describedby={errors.movingFrom ? "from-error" : undefined}
+                error={errors.movingFrom}
+                required
+                isOrigin={true}
+                onDetectLocation={handleDetectLocation}
+                isDetecting={isDetectingLocation}
               />
               
               {/* Quick origin chips */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[11px] text-text-muted">Top Hubs:</span>
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[11px] text-text-muted font-medium">Top Hubs:</span>
                 {["Patna", "Ranchi", "Kolkata", "Delhi NCR", "Lucknow"].map((hub) => (
                   <button
                     key={hub}
                     type="button"
                     onClick={() => handleQuickOrigin(hub)}
-                    className="text-[11px] px-2 py-0.5 rounded-md bg-surface border border-border text-text-muted hover:text-text hover:border-primary/40 transition-colors"
+                    className="text-[11px] px-2 py-0.5 rounded-md bg-surface border border-border text-text-muted hover:text-text hover:border-primary/40 transition-colors cursor-pointer"
                   >
                     {hub}
                   </button>
                 ))}
               </div>
-
-              {errors.movingFrom && (
-                <p id="from-error" className="text-xs font-medium text-danger mt-0.5" role="alert">
-                  {errors.movingFrom}
-                </p>
-              )}
             </div>
 
-            {/* Moving To */}
+            {/* Moving To with Autocomplete & Swap Button */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="movingTo" className="text-sm font-semibold text-text tracking-wide">
-                Moving to <span className="text-danger" aria-hidden="true">*</span>
-              </label>
-              <input
+              <LocationAutocomplete
                 id="movingTo"
                 name="movingTo"
-                type="text"
+                label="Moving to"
                 value={form.movingTo}
-                onChange={handleChange}
-                className={`w-full px-4 py-3.5 text-[0.95rem] text-text bg-background border rounded-[var(--radius-md)] placeholder:text-text-muted transition-all duration-150 ${
-                  errors.movingTo
-                    ? "border-danger ring-4 ring-danger/10"
-                    : "border-border hover:border-text-muted/60 focus:border-primary focus:ring-4 focus:ring-primary/10"
-                }`}
-                placeholder="e.g. Delhi NCR / Ranchi / Mumbai"
-                aria-required="true"
-                aria-describedby={errors.movingTo ? "to-error" : undefined}
+                onChange={handleToChange}
+                placeholder="e.g. Ranchi / Delhi NCR / Mumbai"
+                error={errors.movingTo}
+                required
+                headerAction={
+                  <button
+                    type="button"
+                    onClick={handleSwapLocations}
+                    className="text-xs font-semibold text-primary hover:text-accent flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Swap origin and destination"
+                  >
+                    <ArrowLeftRight size={12} />
+                    <span>Swap route</span>
+                  </button>
+                }
               />
               
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[11px] text-text-muted">Popular:</span>
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[11px] text-text-muted font-medium">Popular:</span>
                 {["Delhi NCR", "Ranchi", "Kolkata", "Bengaluru", "Mumbai"].map((dest) => (
                   <button
                     key={dest}
                     type="button"
-                    onClick={() => {
-                      setForm((prev) => ({ ...prev, movingTo: dest }));
-                      if (errors.movingTo) setErrors((prev) => ({ ...prev, movingTo: undefined }));
-                    }}
-                    className="text-[11px] px-2 py-0.5 rounded-md bg-surface border border-border text-text-muted hover:text-text hover:border-primary/40 transition-colors"
+                    onClick={() => handleToChange(dest)}
+                    className="text-[11px] px-2 py-0.5 rounded-md bg-surface border border-border text-text-muted hover:text-text hover:border-primary/40 transition-colors cursor-pointer"
                   >
                     {dest}
                   </button>
                 ))}
               </div>
-
-              {errors.movingTo && (
-                <p id="to-error" className="text-xs font-medium text-danger mt-0.5" role="alert">
-                  {errors.movingTo}
-                </p>
-              )}
             </div>
 
             {/* Move type (Custom Dropdown) */}
@@ -641,10 +734,10 @@ const QuoteForm = ({
                     key={item.val}
                     type="button"
                     onClick={() => handleQuickMoveType(item.val)}
-                    className={`text-[11px] px-2 py-0.5 rounded-md transition-colors ${
+                    className={`text-[11px] px-2 py-0.5 rounded-md font-medium border transition-colors cursor-pointer ${
                       form.moveType === item.val
-                        ? "bg-primary text-white font-bold"
-                        : "bg-surface border border-border text-text-muted hover:text-text"
+                        ? "bg-primary text-white border-primary"
+                        : "bg-surface border-border text-text-muted hover:text-text"
                     }`}
                   >
                     {item.label}
@@ -653,29 +746,80 @@ const QuoteForm = ({
               </div>
             </div>
 
-            {/* Service needed (Custom Dropdown) */}
-            <CustomSelect
-              id="service"
-              label="Service needed"
-              value={form.service}
-              onChange={(val) => handleSelectChange("service", val)}
-              options={services}
-              placeholder="Select a service"
-              error={errors.service}
-              required
-            />
 
-            {/* Timeline (Custom Dropdown) */}
-            <CustomSelect
-              id="timeline"
-              label="Preferred timeline"
-              value={form.timeline}
-              onChange={(val) => handleSelectChange("timeline", val)}
-              options={timelines}
-              placeholder="When do you plan to move?"
-              error={errors.timeline}
-              required
-            />
+            {/* Move size / Home configuration (Select & Quick Chips) */}
+            <div className="flex flex-col gap-1.5">
+              <CustomSelect
+                id="moveSize"
+                label="Home / move size"
+                value={form.moveSize}
+                onChange={(val) => handleSelectChange("moveSize", val)}
+                options={moveSizes}
+                placeholder="Select size (e.g. 1 BHK, 2 BHK, Vehicle)"
+              />
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {[
+                  { label: "1 BHK", val: "1 BHK (1 Bedroom / Studio)" },
+                  { label: "2 BHK", val: "2 BHK (Standard Apartment)" },
+                  { label: "3 BHK", val: "3 BHK (Large Apartment)" },
+                  { label: "4+ BHK", val: "4+ BHK / Independent Villa" },
+                ].map((item) => (
+                  <button
+                    key={item.val}
+                    type="button"
+                    onClick={() => {
+                      setForm((prev) => ({
+                        ...prev,
+                        moveSize: item.val,
+                        service: prev.service || "Home shifting",
+                      }));
+                    }}
+                    className={`text-[11px] px-2 py-0.5 rounded-md font-medium border transition-colors cursor-pointer ${
+                      form.moveSize === item.val
+                        ? "bg-primary text-white border-primary"
+                        : "bg-surface border-border text-text-muted hover:text-text"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Timeline (Custom Dropdown & Quick Chips) */}
+            <div className="flex flex-col gap-1.5">
+              <CustomSelect
+                id="timeline"
+                label="Preferred timeline"
+                value={form.timeline}
+                onChange={(val) => handleSelectChange("timeline", val)}
+                options={timelines}
+                placeholder="When do you plan to move?"
+                error={errors.timeline}
+                required
+              />
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {[
+                  { label: "2-3 Days", val: "Urgent (within 2 to 3 days)" },
+                  { label: "Within 1 Wk", val: "Within a week" },
+                  { label: "15 Days", val: "Within 15 days" },
+                  { label: "Flexible", val: "Not fixed yet" },
+                ].map((item) => (
+                  <button
+                    key={item.val}
+                    type="button"
+                    onClick={() => handleSelectChange("timeline", item.val)}
+                    className={`text-[11px] px-2 py-0.5 rounded-md font-medium border transition-colors cursor-pointer ${
+                      form.timeline === item.val
+                        ? "bg-primary text-white border-primary"
+                        : "bg-surface border-border text-text-muted hover:text-text"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Email (optional) */}
             <div className="flex flex-col gap-2">
@@ -693,6 +837,31 @@ const QuoteForm = ({
                 className="w-full px-4 py-3.5 text-[0.95rem] text-text bg-background border border-border rounded-[var(--radius-md)] placeholder:text-text-muted hover:border-text-muted/60 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-150"
                 placeholder="you@example.com"
               />
+            </div>
+
+            {/* Live Dynamic Price Range Indicator Banner */}
+            <div className="sm:col-span-2 p-4 rounded-2xl bg-gradient-to-r from-primary/5 via-surface to-accent/5 border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-primary">
+                    Instant Price Range Estimate
+                  </span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    {form.moveType || "Standard Move"}
+                  </span>
+                </div>
+                <p className="text-xs text-text-muted">
+                  Includes multi-layer protective packaging, professional loading, dedicated closed container & basic goods insurance.
+                </p>
+              </div>
+              <div className="sm:text-right shrink-0">
+                <div className="text-base sm:text-xl font-display font-extrabold text-primary">
+                  {fareEstimate.min} - {fareEstimate.max}
+                </div>
+                <span className="text-[11px] text-text-muted block font-medium">
+                  {fareEstimate.unit}
+                </span>
+              </div>
             </div>
 
             {/* Submit & Assurance */}
