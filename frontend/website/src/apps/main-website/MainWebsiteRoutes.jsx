@@ -1,20 +1,22 @@
 import { Route, Routes } from "react-router";
 
+import { lazy } from "react";
 import MainWebsiteLayout from "./MainWebsiteLayout";
-import Home from "./pages/Home/Home";
-import ServicesPage from "./pages/Services/ServicesPage";
-import ServiceDetail from "./pages/Services/ServiceDetail";
-import About from "./pages/About/About";
-import Pricing from "./pages/Pricing/Pricing";
-import Contact from "./pages/Contact/Contact";
-import GetQuote from "./pages/GetQuote/GetQuote";
-import WhereWeServe from "./pages/WhereWeServe/WhereWeServe";
-import LocationPage from "./pages/Location/LocationPage";
-import RoutePage from "./pages/Route/RoutePage";
-import Privacy from "./pages/Legal/Privacy";
-import Terms from "./pages/Legal/Terms";
-import SearchPage from "./pages/Search/SearchPage";
-import NotFound from "./shared/components/NotFound";
+
+const Home = lazy(() => import("./pages/Home/Home"));
+const ServicesPage = lazy(() => import("./pages/Services/ServicesPage"));
+const ServiceDetail = lazy(() => import("./pages/Services/ServiceDetail"));
+const About = lazy(() => import("./pages/About/About"));
+const Pricing = lazy(() => import("./pages/Pricing/Pricing"));
+const Contact = lazy(() => import("./pages/Contact/Contact"));
+const GetQuote = lazy(() => import("./pages/GetQuote/GetQuote"));
+const WhereWeServe = lazy(() => import("./pages/WhereWeServe/WhereWeServe"));
+const LocationPage = lazy(() => import("./pages/Location/LocationPage"));
+const RoutePage = lazy(() => import("./pages/Route/RoutePage"));
+const Privacy = lazy(() => import("./pages/Legal/Privacy"));
+const Terms = lazy(() => import("./pages/Legal/Terms"));
+const SearchPage = lazy(() => import("./pages/Search/SearchPage"));
+const NotFound = lazy(() => import("./shared/components/NotFound"));
 
 const MainWebsiteRoutes = () => {
   return (

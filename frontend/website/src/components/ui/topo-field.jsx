@@ -338,6 +338,17 @@ export default function TopoField({
   style = {},
 }) {
   const iframeRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || window.matchMedia("(pointer: coarse)").matches);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile, { passive: true });
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   const automaticMode = useAutomaticMode(mode === "auto");
   const resolvedMode =
     mode === "auto" ? automaticMode : mode === "dark" ? "dark" : "light";
@@ -378,6 +389,27 @@ export default function TopoField({
       ? undefined
       : `hue-rotate(${safeHue}deg) saturate(${safeSaturation}) brightness(${safeBrightness})`;
 
+  if (isMobile) {
+    return (
+      <div
+        className={`relative w-full h-full overflow-hidden ${className}`}
+        style={{
+          backgroundColor: background,
+          backgroundImage:
+            resolvedMode === "light"
+              ? "radial-gradient(#203a64 0.75px, transparent 0.75px), radial-gradient(#203a64 0.75px, #eef3f8 0.75px)"
+              : "radial-gradient(#ffffff 0.75px, transparent 0.75px), radial-gradient(#ffffff 0.75px, #0b192c 0.75px)",
+          backgroundSize: "28px 28px",
+          backgroundPosition: "0 0, 14px 14px",
+          opacity: safeOpacity * 0.7,
+          pointerEvents: "none",
+          ...style,
+        }}
+        aria-hidden="true"
+      />
+    );
+  }
+
   return (
     <iframe
       ref={iframeRef}
@@ -385,7 +417,7 @@ export default function TopoField({
       title="Topo Field"
       srcDoc={source}
       sandbox="allow-scripts"
-      loading="eager"
+      loading="lazy"
       style={{
         display: "block",
         width: "100%",

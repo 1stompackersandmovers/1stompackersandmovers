@@ -23,6 +23,12 @@ function LenisScroll() {
       return;
     }
 
+    // Disable on touch screens / mobile devices for zero CPU overhead and 100% native momentum scroll
+    const isDesktopPointer = window.matchMedia("(pointer: fine) and (min-width: 1024px)").matches;
+    if (!isDesktopPointer) {
+      return;
+    }
+
     let lenis;
     import("lenis").then(({ default: Lenis }) => {
       lenis = new Lenis({
