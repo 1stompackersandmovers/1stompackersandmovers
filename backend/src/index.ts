@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { leadsRouter } from "./routes/leads.routes";
+import { adminRouter } from "./routes/admin.routes";
 import { Bindings } from "./types";
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -10,7 +11,7 @@ app.use(
   "*",
   cors({
     origin: (origin) => origin || "*",
-    allowMethods: ["GET", "POST", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -36,6 +37,7 @@ app.get("/api/geo", (c) => {
 
 // Mount routes
 app.route("/api/leads", leadsRouter);
+app.route("/api/admin", adminRouter);
 
 // Global 404 handler
 app.notFound((c) => {

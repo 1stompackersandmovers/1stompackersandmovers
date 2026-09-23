@@ -7,7 +7,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 execute DB --local --file=./drizzle/0000_init.sql"
+    "db:migrate:local": "wrangler d1 execute DB --local --file=./drizzle/0000_init.sql",
+    "create-admin": "node scripts/create-admin.js"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.1",

@@ -1,0 +1,627 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
+import {
+  Phone,
+  MessageSquare,
+  Plus,
+  Search,
+  Calendar,
+  MapPin,
+  Clock,
+  ArrowRight,
+  Filter,
+  CheckCircle,
+  FileSpreadsheet,
+  X,
+  User,
+  Truck,
+  RotateCcw,
+  Copy,
+  Check,
+  TrendingUp,
+  AlertCircle,
+  Sparkles,
+} from "lucide-react";
+import {
+  useGetLeadsQuery,
+  useCreateManualLeadMutation,
+  useUpdateLeadMutation,
+} from "../../../../store/apiSlices/leadsApiSlice";
+import { companyConfig } from "../../../../configs/company.config";
+
+const LeadsList = () => {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const { data: leads = [], isLoading: loading, refetch: fetchLeads } =
+    useGetLeadsQuery(statusFilter);
+  const [createManualLead] = useCreateManualLeadMutation();
+  const [updateLead] = useUpdateLeadMutation();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [copiedPhoneId, setCopiedPhoneId] = useState(null);
+
+  // New Lead Form state
+  const [newLeadForm, setNewLeadForm] = useState({
+    name: "",
+    phone: "",
+    movingFrom: "",
+    movingTo: "",
+    moveType: "Within City",
+    service: "Home Shifting",
+    timeline: "Within a week",
+    notes: "",
+  });
+
+  const navigate = useNavigate();
+
+  const handleUpdateStatus = async (leadId, newStatus) => {
+    try {
+      await updateLead({ id: leadId, status: newStatus }).unwrap();
+      if (selectedLead && selectedLead.id === leadId) {
+        setSelectedLead((prev) => ({ ...prev, status: newStatus }));
+      }
+    } catch (err) {
+      alert("Failed to update status: " + (err.data?.error || err.message));
+    }
+  };
+
+  const handleSaveNotes = async (leadId, notes) => {
+    try {
+      await updateLead({ id: leadId, notes }).unwrap();
+    } catch (err) {
+      alert("Failed to save notes: " + (err.data?.error || err.message));
+    }
+  };
+
+  const handleCreateLead = async (e) => {
+    e.preventDefault();
+    try {
+      await createManualLead(newLeadForm).unwrap();
+      setIsAddModalOpen(false);
+      setNewLeadForm({
+        name: "",
+        phone: "",
+        movingFrom: "",
+        movingTo: "",
+        moveType: "Within City",
+        service: "Home Shifting",
+        timeline: "Within a week",
+        notes: "",
+      });
+    } catch (err) {
+      alert("Failed to create lead: " + (err.data?.error || err.message));
+    }
+  };
+
+  const copyToClipboard = (phone, id) => {
+    navigator.clipboard.writeText(phone);
+    setCopiedPhoneId(id);
+    setTimeout(() => setCopiedPhoneId(null), 2000);
+  };
+
+  const filteredLeads = leads.filter((l) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      (l.name && l.name.toLowerCase().includes(q)) ||
+      (l.phone && l.phone.includes(q)) ||
+      (l.movingFrom && l.movingFrom.toLowerCase().includes(q)) ||
+      (l.movingTo && l.movingTo.toLowerCase().includes(q))
+    );
+  });
+
+  // KPI Calculations
+  const totalLeads = leads.length;
+  const newLeadsCount = leads.filter((l) => l.status === "new").length;
+  const contactedCount = leads.filter((l) => l.status === "contacted").length;
+  const convertedCount = leads.filter((l) => l.status === "converted").length;
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "new":
+        return (
+          <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-200/80 text-[11px] font-bold px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+            New Lead
+          </span>
+        );
+      case "contacted":
+        return (
+          <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200/80 text-[11px] font-bold px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            Contacted
+          </span>
+        );
+      case "converted":
+        return (
+          <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-bold px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            Converted
+          </span>
+        );
+      case "lost":
+        return (
+          <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-medium px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+            Lost
+          </span>
+        );
+      default:
+        return (
+          <span className="bg-slate-100 text-slate-700 text-[11px] px-2.5 py-1 rounded-full">
+            {status}
+          </span>
+        );
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Inquiries & Leads</h2>
+            <span className="bg-blue-50 text-blue-700 border border-blue-200/70 text-xs font-semibold px-2 py-0.5 rounded-full">
+              {totalLeads} Records
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Real-time inquiries from website quotes, phone calls, and direct walk-ins
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={fetchLeads}
+            className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 bg-slate-50 border border-slate-200/80 rounded-xl transition-all cursor-pointer text-xs font-medium"
+            title="Refresh leads list"
+          >
+            <RotateCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span>Sync</span>
+          </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xs shadow-blue-500/20 transition-all cursor-pointer active:scale-98"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Quick Call Lead</span>
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Metric Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Leads</span>
+            <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+              <User className="w-4 h-4" />
+            </span>
+          </div>
+          <p className="text-2xl font-black text-slate-900 mt-2 font-mono">{totalLeads}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">All channel inquiries</p>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">New Inquiries</span>
+            <span className="p-2 rounded-xl bg-rose-50 text-rose-600">
+              <AlertCircle className="w-4 h-4" />
+            </span>
+          </div>
+          <p className="text-2xl font-black text-rose-600 mt-2 font-mono">{newLeadsCount}</p>
+          <p className="text-[11px] text-rose-500 font-medium mt-0.5">Needs immediate follow-up</p>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">In Progress</span>
+            <span className="p-2 rounded-xl bg-amber-50 text-amber-600">
+              <Clock className="w-4 h-4" />
+            </span>
+          </div>
+          <p className="text-2xl font-black text-amber-600 mt-2 font-mono">{contactedCount}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Quote discussed / pending</p>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Converted (Won)</span>
+            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+              <TrendingUp className="w-4 h-4" />
+            </span>
+          </div>
+          <p className="text-2xl font-black text-emerald-600 mt-2 font-mono">{convertedCount}</p>
+          <p className="text-[11px] text-emerald-600 font-medium mt-0.5">
+            {totalLeads > 0 ? `${Math.round((convertedCount / totalLeads) * 100)}% conversion` : "Active deals"}
+          </p>
+        </div>
+      </div>
+
+      {/* Search & Status Filters */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by customer name, phone number, origin, or destination city..."
+              className="w-full pl-10 pr-9 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filter Tabs with Dynamic Count Badges */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+          {[
+            { id: "all", label: "All Leads", count: totalLeads },
+            { id: "new", label: "New", count: newLeadsCount },
+            { id: "contacted", label: "Contacted", count: contactedCount },
+            { id: "converted", label: "Converted", count: convertedCount },
+            { id: "lost", label: "Lost", count: leads.filter((l) => l.status === "lost").length },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all cursor-pointer ${
+                statusFilter === tab.id
+                  ? "bg-blue-600 text-white shadow-xs font-semibold"
+                  : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  statusFilter === tab.id
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-200/70 text-slate-600"
+                }`}
+              >
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Leads Grid / Cards */}
+      {loading ? (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
+          <RotateCcw className="w-6 h-6 animate-spin text-blue-600 mx-auto" />
+          <p className="text-sm font-semibold text-slate-700">Loading live inquiries...</p>
+        </div>
+      ) : filteredLeads.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
+          <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+            <User className="w-7 h-7" />
+          </div>
+          <h3 className="text-base font-bold text-slate-800">No leads found</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            {searchQuery
+              ? `No inquiries match "${searchQuery}". Try searching by another keyword.`
+              : 'Submit a quote on the public website or click "Quick Call Lead" to log a customer inquiry.'}
+          </p>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Log Customer Call</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredLeads.map((lead) => (
+            <div
+              key={lead.id}
+              className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between space-y-3.5 group"
+            >
+              <div>
+                {/* Header Row: Customer Name, Phone, and Status Badge */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="text-base font-bold text-slate-900 leading-snug truncate group-hover:text-blue-600 transition-colors">
+                      {lead.name}
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-xs text-slate-600 font-mono font-medium">{lead.phone}</span>
+                      <button
+                        onClick={() => copyToClipboard(lead.phone, lead.id)}
+                        className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer transition-colors"
+                        title="Copy phone number"
+                      >
+                        {copiedPhoneId === lead.id ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="shrink-0">{getStatusBadge(lead.status)}</div>
+                </div>
+
+                {/* Route & Cargo Specs */}
+                <div className="mt-3 bg-slate-50/80 border border-slate-100 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                    <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span className="truncate">{lead.movingFrom}</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="text-blue-900 truncate">{lead.movingTo}</span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 pt-1 border-t border-slate-200/60">
+                    <span className="bg-white px-2 py-0.5 rounded border border-slate-200/70 font-medium text-slate-700">
+                      📦 {lead.service || "Shifting"}
+                    </span>
+                    <span className="bg-white px-2 py-0.5 rounded border border-slate-200/70 font-medium text-slate-700">
+                      ⏱️ {lead.timeline || "Immediate"}
+                    </span>
+                    <span className="text-[10px] text-slate-400 ml-auto">
+                      {new Date(lead.createdAt).toLocaleDateString("en-IN", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Optional Customer Notes */}
+                {lead.notes && (
+                  <p className="mt-2.5 text-xs text-slate-600 bg-amber-50/80 border border-amber-200/60 p-2.5 rounded-xl">
+                    <span className="font-semibold text-amber-800">Note: </span>
+                    {lead.notes}
+                  </p>
+                )}
+              </div>
+
+              {/* Bottom Actions Area */}
+              <div className="space-y-2.5 pt-2 border-t border-slate-100">
+                {/* Communication & Conversion Buttons */}
+                <div className="grid grid-cols-3 gap-2">
+                  <a
+                    href={`tel:${lead.phone}`}
+                    className="flex items-center justify-center gap-1.5 py-2 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs rounded-xl transition-colors text-center border border-emerald-200/60"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Call</span>
+                  </a>
+
+                  <a
+                    href={`https://wa.me/91${lead.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                      `Hello ${lead.name}, greetings from ${companyConfig.name}! We received your shifting inquiry for ${lead.movingFrom} to ${lead.movingTo}. How can we assist you with best rates today?`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-1.5 py-2 px-2 bg-green-50 hover:bg-green-100 text-green-800 font-semibold text-xs rounded-xl transition-colors text-center border border-green-200/60"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 text-green-600" />
+                    <span>WhatsApp</span>
+                  </a>
+
+                  <button
+                    onClick={() => {
+                      navigate(
+                        `/quotes/new?leadId=${lead.id}&name=${encodeURIComponent(
+                          lead.name
+                        )}&phone=${encodeURIComponent(
+                          lead.phone
+                        )}&from=${encodeURIComponent(
+                          lead.movingFrom
+                        )}&to=${encodeURIComponent(lead.movingTo)}`
+                      );
+                    }}
+                    className="flex items-center justify-center gap-1.5 py-2 px-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-2xs transition-colors cursor-pointer text-center"
+                    title="Generate quotation for this inquiry"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>Quote</span>
+                  </button>
+                </div>
+
+                {/* Quick Status Pill Bar */}
+                <div className="flex items-center justify-between text-[11px] pt-1">
+                  <span className="text-slate-400 font-medium">Stage:</span>
+                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
+                    {["new", "contacted", "converted", "lost"].map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => handleUpdateStatus(lead.id, st)}
+                        className={`px-2 py-0.5 rounded-md capitalize font-medium transition-all ${
+                          lead.status === st
+                            ? "bg-white text-slate-900 shadow-2xs font-bold"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        {st}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Quick Add Manual Lead Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Log Incoming Call / Walk-In Lead
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Capture customer details to track and generate estimate
+                </p>
+              </div>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateLead} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Customer Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newLeadForm.name}
+                    onChange={(e) =>
+                      setNewLeadForm({ ...newLeadForm, name: e.target.value })
+                    }
+                    placeholder="e.g. Ramesh Kumar"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Phone Number *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={newLeadForm.phone}
+                    onChange={(e) =>
+                      setNewLeadForm({ ...newLeadForm, phone: e.target.value })
+                    }
+                    placeholder="10-digit mobile number"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Moving From *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newLeadForm.movingFrom}
+                    onChange={(e) =>
+                      setNewLeadForm({ ...newLeadForm, movingFrom: e.target.value })
+                    }
+                    placeholder="e.g. Kankarbagh, Patna"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Moving To *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newLeadForm.movingTo}
+                    onChange={(e) =>
+                      setNewLeadForm({ ...newLeadForm, movingTo: e.target.value })
+                    }
+                    placeholder="e.g. Ranchi / New Delhi"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Move Scope</label>
+                  <select
+                    value={newLeadForm.moveType}
+                    onChange={(e) =>
+                      setNewLeadForm({ ...newLeadForm, moveType: e.target.value })
+                    }
+                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs"
+                  >
+                    <option value="Within City">Within City</option>
+                    <option value="Domestic">Interstate (Domestic)</option>
+                    <option value="Vehicle Shifting">Vehicle Only</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Service Category</label>
+                  <select
+                    value={newLeadForm.service}
+                    onChange={(e) =>
+                      setNewLeadForm({ ...newLeadForm, service: e.target.value })
+                    }
+                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs"
+                  >
+                    <option value="Home Shifting">Home Shifting</option>
+                    <option value="Office Relocation">Office Relocation</option>
+                    <option value="Car & Bike Transport">Car / Bike Transport</option>
+                    <option value="Warehousing">Storage / Warehousing</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700">Timeline</label>
+                  <select
+                    value={newLeadForm.timeline}
+                    onChange={(e) =>
+                      setNewLeadForm({ ...newLeadForm, timeline: e.target.value })
+                    }
+                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs"
+                  >
+                    <option value="Immediate">Today / Tomorrow</option>
+                    <option value="Within a week">Within a week</option>
+                    <option value="Next month">Next month</option>
+                    <option value="Just inquiring">Just inquiring</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-slate-700">Notes & Special Requirements</label>
+                <textarea
+                  rows={2}
+                  value={newLeadForm.notes}
+                  onChange={(e) =>
+                    setNewLeadForm({ ...newLeadForm, notes: e.target.value })
+                  }
+                  placeholder="e.g. 2BHK, 3rd floor without elevator, includes refrigerator and double bed..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white text-xs"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+                >
+                  Save Lead Record
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default LeadsList;
