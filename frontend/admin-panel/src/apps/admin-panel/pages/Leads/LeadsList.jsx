@@ -21,6 +21,7 @@ import {
   TrendingUp,
   AlertCircle,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import {
   useGetLeadsQuery,
@@ -28,6 +29,7 @@ import {
   useUpdateLeadMutation,
 } from "../../../../store/apiSlices/leadsApiSlice";
 import { companyConfig } from "../../../../configs/company.config";
+import { FormField } from "../../../../components/FormField";
 
 const LeadsList = () => {
   const [statusFilter, setStatusFilter] = useState("all");
@@ -52,6 +54,8 @@ const LeadsList = () => {
     timeline: "Within a week",
     notes: "",
   });
+  const [leadErrors, setLeadErrors] = useState({});
+  const [leadSubmitError, setLeadSubmitError] = useState("");
 
   const navigate = useNavigate();
 
@@ -74,8 +78,25 @@ const LeadsList = () => {
     }
   };
 
+  const validateLeadForm = () => {
+    const errs = {};
+    if (!newLeadForm.name.trim()) errs.name = "Customer name is required";
+    if (!newLeadForm.phone.trim()) {
+      errs.phone = "Phone number is required";
+    } else if (!/^\d{10}$/.test(newLeadForm.phone.trim())) {
+      errs.phone = "Enter a valid 10-digit mobile number";
+    }
+    if (!newLeadForm.movingFrom.trim()) errs.movingFrom = "Moving from address is required";
+    if (!newLeadForm.movingTo.trim()) errs.movingTo = "Moving to address is required";
+    setLeadErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleCreateLead = async (e) => {
     e.preventDefault();
+    setLeadSubmitError("");
+    if (!validateLeadForm()) return;
+
     try {
       await createManualLead(newLeadForm).unwrap();
       setIsAddModalOpen(false);
@@ -89,8 +110,9 @@ const LeadsList = () => {
         timeline: "Within a week",
         notes: "",
       });
+      setLeadErrors({});
     } catch (err) {
-      alert("Failed to create lead: " + (err.data?.error || err.message));
+      setLeadSubmitError(err.data?.error || err.message || "Failed to create lead");
     }
   };
 
@@ -390,6 +412,15 @@ const LeadsList = () => {
 
               {/* Bottom Actions Area */}
               <div className="space-y-2.5 pt-2 border-t border-slate-100">
+                {/* View Full Customer Pipeline CTA */}
+                <button
+                  onClick={() => navigate(`/leads/${lead.id}`)}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors shadow-2xs"
+                >
+                  <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+                  <span>View Customer Pipeline & Relocation Tree →</span>
+                </button>
+
                 {/* Communication & Conversion Buttons */}
                 <div className="grid grid-cols-3 gap-2">
                   <a
@@ -478,13 +509,18 @@ const LeadsList = () => {
               </button>
             </div>
 
+            {leadSubmitError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center justify-between">
+                <span>{leadSubmitError}</span>
+                <button type="button" onClick={() => setLeadSubmitError("")} className="font-bold">×</button>
+              </div>
+            )}
+
             <form onSubmit={handleCreateLead} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Customer Name *</label>
+                <FormField label="Customer Name" required error={leadErrors.name}>
                   <input
                     type="text"
-                    required
                     value={newLeadForm.name}
                     onChange={(e) =>
                       setNewLeadForm({ ...newLeadForm, name: e.target.value })
@@ -492,13 +528,12 @@ const LeadsList = () => {
                     placeholder="e.g. Ramesh Kumar"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white text-xs"
                   />
-                </div>
+                </FormField>
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Phone Number *</label>
+                <FormField label="Phone Number" required error={leadErrors.phone}>
                   <input
                     type="tel"
-                    required
+                    maxLength={10}
                     value={newLeadForm.phone}
                     onChange={(e) =>
                       setNewLeadForm({ ...newLeadForm, phone: e.target.value })
@@ -506,15 +541,13 @@ const LeadsList = () => {
                     placeholder="10-digit mobile number"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white text-xs font-mono"
                   />
-                </div>
+                </FormField>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Moving From *</label>
+                <FormField label="Moving From" required error={leadErrors.movingFrom}>
                   <input
                     type="text"
-                    required
                     value={newLeadForm.movingFrom}
                     onChange={(e) =>
                       setNewLeadForm({ ...newLeadForm, movingFrom: e.target.value })
@@ -522,13 +555,11 @@ const LeadsList = () => {
                     placeholder="e.g. Kankarbagh, Patna"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white text-xs"
                   />
-                </div>
+                </FormField>
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Moving To *</label>
+                <FormField label="Moving To" required error={leadErrors.movingTo}>
                   <input
                     type="text"
-                    required
                     value={newLeadForm.movingTo}
                     onChange={(e) =>
                       setNewLeadForm({ ...newLeadForm, movingTo: e.target.value })
@@ -536,12 +567,11 @@ const LeadsList = () => {
                     placeholder="e.g. Ranchi / New Delhi"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white text-xs"
                   />
-                </div>
+                </FormField>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Move Scope</label>
+                <FormField label="Move Scope">
                   <select
                     value={newLeadForm.moveType}
                     onChange={(e) =>
@@ -553,10 +583,9 @@ const LeadsList = () => {
                     <option value="Domestic">Interstate (Domestic)</option>
                     <option value="Vehicle Shifting">Vehicle Only</option>
                   </select>
-                </div>
+                </FormField>
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Service Category</label>
+                <FormField label="Service Category">
                   <select
                     value={newLeadForm.service}
                     onChange={(e) =>
@@ -569,10 +598,9 @@ const LeadsList = () => {
                     <option value="Car & Bike Transport">Car / Bike Transport</option>
                     <option value="Warehousing">Storage / Warehousing</option>
                   </select>
-                </div>
+                </FormField>
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Timeline</label>
+                <FormField label="Timeline">
                   <select
                     value={newLeadForm.timeline}
                     onChange={(e) =>
@@ -585,21 +613,20 @@ const LeadsList = () => {
                     <option value="Next month">Next month</option>
                     <option value="Just inquiring">Just inquiring</option>
                   </select>
-                </div>
+                </FormField>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Notes & Special Requirements</label>
+              <FormField label="Notes & Special Requirements">
                 <textarea
                   rows={2}
                   value={newLeadForm.notes}
                   onChange={(e) =>
                     setNewLeadForm({ ...newLeadForm, notes: e.target.value })
                   }
-                  placeholder="e.g. 2BHK, 3rd floor without elevator, includes refrigerator and double bed..."
+                  placeholder="e.g. 2BHK, 3rd floor without elevator, includes refrigerator..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white text-xs"
                 />
-              </div>
+              </FormField>
 
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button

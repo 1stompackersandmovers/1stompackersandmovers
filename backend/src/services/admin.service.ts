@@ -2,6 +2,7 @@ import { eq, desc, or } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { admins, quotations, jobs, invoices, bilties, leads, companySettings } from "../db/schema";
 import { hashPassword, verifyPassword } from "../utils/crypto";
+import { releaseJobResources } from "./operations.service";
 import { Bindings } from "../types";
 
 // ================= AUTH & PROFILE ================= //
@@ -239,6 +240,12 @@ export const getAllLeads = async (env: Bindings, statusFilter?: string) => {
   return await db.select().from(leads).orderBy(desc(leads.createdAt));
 };
 
+export const getLeadById = async (env: Bindings, id: number) => {
+  const db = getDb(env.DB);
+  const result = await db.select().from(leads).where(eq(leads.id, id)).limit(1);
+  return result[0] || null;
+};
+
 export const updateLeadStatusAndNotes = async (
   env: Bindings,
   leadId: number,
@@ -474,6 +481,11 @@ export const updateJob = async (
     .set(data)
     .where(eq(jobs.id, id))
     .returning();
+
+  if (data.status === "completed" || data.status === "cancelled") {
+    await releaseJobResources(env, id);
+  }
+
   return updated[0];
 };
 

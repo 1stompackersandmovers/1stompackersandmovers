@@ -34,7 +34,38 @@ import {
   getBiltyById,
   getCompanySettings,
   updateCompanySettings,
+  getLeadById,
 } from "../services/admin.service";
+import {
+  getAllVehicles,
+  getVehicleById,
+  createVehicle,
+  updateVehicle,
+  deleteVehicle,
+  getAllStaff,
+  getStaffById,
+  createStaff,
+  updateStaff,
+  deleteStaff,
+  getJobResources,
+  assignVehiclesToJob,
+  removeVehicleFromJob,
+  assignStaffToJob,
+  removeStaffFromJob,
+  updateStaffJobPayment,
+  addJobExpense,
+  deleteJobExpense,
+} from "../services/operations.service";
+import {
+  recordInvoicePayment,
+  getInvoicePayments,
+  getFinanceSummary,
+  getMonthlyRevenue,
+  getTopRoutes,
+  getPendingPayroll,
+  getJobProfitSummary,
+  getLeadPipeline,
+} from "../services/finance.service";
 import { createToken, getJwtSecret } from "../middlewares/auth";
 import { verifyPassword } from "../utils/crypto";
 import { sendOtpEmail } from "../services/email.service";
@@ -663,5 +694,315 @@ export const handleUpdateSettings = async (c: Context<{ Bindings: Bindings }>) =
   } catch (err: any) {
     console.error("Update settings error:", err);
     return c.json({ error: "Failed to save settings. Please try again." }, 500);
+  }
+};
+
+// ================= LEAD PIPELINE ================= //
+
+export const handleGetLeadById = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const id = parseInt(c.req.param("id") ?? "", 10);
+    const lead = await getLeadById(c.env, id);
+    if (!lead) return c.json({ error: "Lead not found" }, 404);
+    return c.json({ lead });
+  } catch (err) {
+    return c.json({ error: "Failed to fetch lead" }, 500);
+  }
+};
+
+export const handleGetLeadPipeline = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const id = parseInt(c.req.param("id") ?? "", 10);
+    const pipeline = await getLeadPipeline(c.env, id);
+    if (!pipeline) return c.json({ error: "Lead not found" }, 404);
+    return c.json(pipeline);
+  } catch (err) {
+    return c.json({ error: "Failed to fetch lead pipeline" }, 500);
+  }
+};
+
+// ================= VEHICLES ================= //
+
+export const handleGetVehicles = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const status = c.req.query("status");
+    const date = c.req.query("date");
+    const vehiclesList = await getAllVehicles(c.env, { status, date });
+    return c.json({ vehicles: vehiclesList });
+  } catch (err) {
+    return c.json({ error: "Failed to fetch vehicles" }, 500);
+  }
+};
+
+export const handleGetVehicleById = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const id = parseInt(c.req.param("id") ?? "", 10);
+    const vehicle = await getVehicleById(c.env, id);
+    if (!vehicle) return c.json({ error: "Vehicle not found" }, 404);
+    return c.json({ vehicle });
+  } catch (err) {
+    return c.json({ error: "Failed to fetch vehicle" }, 500);
+  }
+};
+
+export const handleCreateVehicle = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const body = await c.req.json();
+    if (!body.vehicleNumber || !body.vehicleType) {
+      return c.json({ error: "Vehicle number and type are required" }, 400);
+    }
+    const vehicle = await createVehicle(c.env, body);
+    return c.json({ success: true, vehicle }, 201);
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to create vehicle" }, 500);
+  }
+};
+
+export const handleUpdateVehicle = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const id = parseInt(c.req.param("id") ?? "", 10);
+    const body = await c.req.json();
+    const vehicle = await updateVehicle(c.env, id, body);
+    return c.json({ success: true, vehicle });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to update vehicle" }, 500);
+  }
+};
+
+export const handleDeleteVehicle = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const id = parseInt(c.req.param("id") ?? "", 10);
+    const vehicle = await deleteVehicle(c.env, id);
+    return c.json({ success: true, vehicle });
+  } catch (err) {
+    return c.json({ error: "Failed to retire vehicle" }, 500);
+  }
+};
+
+// ================= STAFF ================= //
+
+export const handleGetStaff = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const role = c.req.query("role");
+    const status = c.req.query("status");
+    const date = c.req.query("date");
+    const staffList = await getAllStaff(c.env, { role, status, date });
+    return c.json({ staff: staffList });
+  } catch (err) {
+    return c.json({ error: "Failed to fetch staff" }, 500);
+  }
+};
+
+export const handleGetStaffById = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const id = parseInt(c.req.param("id") ?? "", 10);
+    const member = await getStaffById(c.env, id);
+    if (!member) return c.json({ error: "Staff member not found" }, 404);
+    return c.json({ staff: member });
+  } catch (err) {
+    return c.json({ error: "Failed to fetch staff member" }, 500);
+  }
+};
+
+export const handleCreateStaff = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const body = await c.req.json();
+    if (!body.name || !body.phone || !body.role) {
+      return c.json({ error: "Name, phone, and role are required" }, 400);
+    }
+    const member = await createStaff(c.env, body);
+    return c.json({ success: true, staff: member }, 201);
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to create staff member" }, 500);
+  }
+};
+
+export const handleUpdateStaff = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const id = parseInt(c.req.param("id") ?? "", 10);
+    const body = await c.req.json();
+    const member = await updateStaff(c.env, id, body);
+    return c.json({ success: true, staff: member });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to update staff member" }, 500);
+  }
+};
+
+export const handleDeleteStaff = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const id = parseInt(c.req.param("id") ?? "", 10);
+    const member = await deleteStaff(c.env, id);
+    return c.json({ success: true, staff: member });
+  } catch (err) {
+    return c.json({ error: "Failed to mark staff inactive" }, 500);
+  }
+};
+
+// ================= JOB RESOURCES & EXPENSES ================= //
+
+export const handleGetJobResources = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const resources = await getJobResources(c.env, jobId);
+    return c.json(resources);
+  } catch (err) {
+    return c.json({ error: "Failed to fetch job resources" }, 500);
+  }
+};
+
+export const handleAssignVehiclesToJob = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const body = await c.req.json(); // array of { vehicleId, driverName, driverPhone, role }
+    const vehiclesList = Array.isArray(body) ? body : body.vehicles || [];
+    const resources = await assignVehiclesToJob(c.env, jobId, vehiclesList);
+    return c.json({ success: true, ...resources });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to assign vehicles" }, 500);
+  }
+};
+
+export const handleRemoveVehicleFromJob = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const vehicleId = parseInt(c.req.param("vehicleId") ?? "", 10);
+    const resources = await removeVehicleFromJob(c.env, jobId, vehicleId);
+    return c.json({ success: true, ...resources });
+  } catch (err) {
+    return c.json({ error: "Failed to remove vehicle" }, 500);
+  }
+};
+
+export const handleAssignStaffToJob = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const body = await c.req.json(); // array of { staffId, roleOnJob, payType, rateUsed, daysWorked }
+    const staffList = Array.isArray(body) ? body : body.staff || [];
+    const resources = await assignStaffToJob(c.env, jobId, staffList);
+    return c.json({ success: true, ...resources });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to assign staff" }, 500);
+  }
+};
+
+export const handleRemoveStaffFromJob = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const staffId = parseInt(c.req.param("staffId") ?? "", 10);
+    const resources = await removeStaffFromJob(c.env, jobId, staffId);
+    return c.json({ success: true, ...resources });
+  } catch (err) {
+    return c.json({ error: "Failed to remove staff" }, 500);
+  }
+};
+
+export const handleUpdateStaffPayment = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const staffId = parseInt(c.req.param("staffId") ?? "", 10);
+    const body = await c.req.json();
+    const updated = await updateStaffJobPayment(c.env, jobId, staffId, body);
+    return c.json({ success: true, record: updated });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to update staff payment" }, 500);
+  }
+};
+
+export const handleAddJobExpense = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const body = await c.req.json();
+    if (!body.category || body.amount === undefined) {
+      return c.json({ error: "Category and amount are required" }, 400);
+    }
+    const expense = await addJobExpense(c.env, jobId, body);
+    return c.json({ success: true, expense }, 201);
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to add expense" }, 500);
+  }
+};
+
+export const handleDeleteJobExpense = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const expenseId = parseInt(c.req.param("expenseId") ?? "", 10);
+    await deleteJobExpense(c.env, jobId, expenseId);
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ error: "Failed to delete expense" }, 500);
+  }
+};
+
+export const handleGetJobProfitSummary = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const profit = await getJobProfitSummary(c.env, jobId);
+    return c.json(profit);
+  } catch (err) {
+    return c.json({ error: "Failed to calculate job profit" }, 500);
+  }
+};
+
+// ================= INVOICE PAYMENTS ================= //
+
+export const handleRecordInvoicePayment = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const invoiceId = parseInt(c.req.param("id") ?? "", 10);
+    const body = await c.req.json();
+    if (!body.amount || !body.paymentMode || !body.paymentDate) {
+      return c.json({ error: "Amount, paymentMode, and paymentDate are required" }, 400);
+    }
+    const result = await recordInvoicePayment(c.env, invoiceId, body);
+    return c.json({ success: true, ...result }, 201);
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to record payment" }, 500);
+  }
+};
+
+export const handleGetInvoicePayments = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const invoiceId = parseInt(c.req.param("id") ?? "", 10);
+    const payments = await getInvoicePayments(c.env, invoiceId);
+    return c.json({ payments });
+  } catch (err) {
+    return c.json({ error: "Failed to fetch invoice payments" }, 500);
+  }
+};
+
+// ================= FINANCE METRICS & DASHBOARD ================= //
+
+export const handleGetFinanceSummary = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const summary = await getFinanceSummary(c.env);
+    return c.json(summary);
+  } catch (err) {
+    return c.json({ error: "Failed to fetch finance summary" }, 500);
+  }
+};
+
+export const handleGetMonthlyRevenue = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const monthly = await getMonthlyRevenue(c.env);
+    return c.json({ monthly });
+  } catch (err) {
+    return c.json({ error: "Failed to fetch monthly revenue" }, 500);
+  }
+};
+
+export const handleGetTopRoutes = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const routes = await getTopRoutes(c.env);
+    return c.json({ routes });
+  } catch (err) {
+    return c.json({ error: "Failed to fetch top routes" }, 500);
+  }
+};
+
+export const handleGetPendingPayroll = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const payroll = await getPendingPayroll(c.env);
+    return c.json({ payroll });
+  } catch (err) {
+    return c.json({ error: "Failed to fetch pending payroll" }, 500);
   }
 };

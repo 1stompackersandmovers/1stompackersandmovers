@@ -125,20 +125,19 @@ const Settings = () => {
     }
   }, [dbSettings]);
 
-  // Sync admin profile when loaded from RTK Query
+  // Sync admin profile when loaded from RTK Query or auth state
   useEffect(() => {
     if (profileRes?.admin) {
       const adminData = profileRes.admin;
       setProfileUsername(adminData.username || "");
       setProfileEmail(adminData.email || "");
       setTwoFactorActive(!!adminData.twoFactorEnabled);
-      setAdminProfile(adminData);
     } else if (admin) {
       setProfileUsername(admin.username || "");
       setProfileEmail(admin.email || "");
       setTwoFactorActive(!!admin.twoFactorEnabled);
     }
-  }, [profileRes, admin]);
+  }, [profileRes, admin?.username, admin?.email, admin?.twoFactorEnabled]);
 
   // Update Username and Email Profile via RTK Query mutation
   const handleSaveProfile = async (e) => {

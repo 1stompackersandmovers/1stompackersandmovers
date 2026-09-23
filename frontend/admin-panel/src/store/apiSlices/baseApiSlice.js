@@ -23,6 +23,11 @@ export const baseApiSlice = createApi({
     "Jobs",
     "Invoices",
     "Bilties",
+    "Vehicles",
+    "Staff",
+    "JobResources",
+    "InvoicePayments",
+    "Finance",
   ],
   endpoints: () => ({}),
 });

@@ -13,6 +13,21 @@ export const leadsApiSlice = baseApiSlice.injectEndpoints({
             ]
           : [{ type: "Leads", id: "LIST" }],
     }),
+    getLeadById: builder.query({
+      query: (id) => `/leads/${id}`,
+      transformResponse: (response) => response.lead,
+      providesTags: (result, error, id) => [{ type: "Leads", id }],
+    }),
+    getLeadPipeline: builder.query({
+      query: (id) => `/leads/${id}/pipeline`,
+      providesTags: (result, error, id) => [
+        { type: "Leads", id },
+        { type: "Quotes", id: "LIST" },
+        { type: "Jobs", id: "LIST" },
+        { type: "Invoices", id: "LIST" },
+        { type: "Bilties", id: "LIST" },
+      ],
+    }),
     createManualLead: builder.mutation({
       query: (body) => ({
         url: "/leads/manual",
@@ -37,6 +52,8 @@ export const leadsApiSlice = baseApiSlice.injectEndpoints({
 
 export const {
   useGetLeadsQuery,
+  useGetLeadByIdQuery,
+  useGetLeadPipelineQuery,
   useCreateManualLeadMutation,
   useUpdateLeadMutation,
 } = leadsApiSlice;

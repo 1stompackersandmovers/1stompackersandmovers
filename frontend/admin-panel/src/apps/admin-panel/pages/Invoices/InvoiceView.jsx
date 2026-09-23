@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router";
+import React, { useState } from "react";
+import { useParams, useNavigate, Link } from "react-router";
 import {
   ArrowLeft,
   Printer,
@@ -10,44 +10,68 @@ import {
   Truck,
   DollarSign,
   X,
+  CreditCard,
+  Plus,
+  Calendar,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   useGetInvoiceByIdQuery,
-  useUpdateInvoicePaymentMutation,
+  useGetInvoicePaymentsQuery,
+  useRecordInvoicePaymentMutation,
 } from "../../../../store/apiSlices/invoicesApiSlice";
 import { companyConfig } from "../../../../configs/company.config";
+import { FormField } from "../../../../components/FormField";
 
 const InvoiceView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const { data: invoice, isLoading: loading } = useGetInvoiceByIdQuery(id);
-  const [updateInvoicePayment, { isLoading: updatingPayment }] =
-    useUpdateInvoicePaymentMutation();
+  const { data: payments = [], isLoading: paymentsLoading } = useGetInvoicePaymentsQuery(id);
+  const [recordPayment, { isLoading: recordingPayment }] = useRecordInvoicePaymentMutation();
 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [newAdvancePaid, setNewAdvancePaid] = useState("");
-  const [paymentMode, setPaymentMode] = useState("UPI");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMode, setPaymentMode] = useState("upi");
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+  const [transactionRef, setTransactionRef] = useState("");
+  const [paymentNotes, setPaymentNotes] = useState("");
+  const [paymentError, setPaymentError] = useState("");
 
-  useEffect(() => {
+  const handleOpenPaymentModal = () => {
     if (invoice) {
-      setNewAdvancePaid(invoice.advancePaid?.toString() || "0");
-      setPaymentMode(invoice.paymentMode || "UPI");
+      setPaymentAmount(invoice.balanceDue > 0 ? invoice.balanceDue.toString() : "");
+      setPaymentDate(new Date().toISOString().split("T")[0]);
+      setTransactionRef("");
+      setPaymentNotes("");
+      setPaymentError("");
     }
-  }, [invoice]);
+    setIsPaymentModalOpen(true);
+  };
 
-  const handleUpdatePayment = async (e) => {
+  const handleRecordPaymentSubmit = async (e) => {
     e.preventDefault();
+    setPaymentError("");
+    if (!paymentAmount || Number(paymentAmount) <= 0) {
+      setPaymentError("Payment amount must be greater than 0");
+      return;
+    }
+
     try {
-      await updateInvoicePayment({
-        id,
-        advancePaid: Number(newAdvancePaid) || 0,
+      await recordPayment({
+        invoiceId: id,
+        amount: Number(paymentAmount),
         paymentMode,
+        paymentDate,
+        transactionRef,
+        notes: paymentNotes,
       }).unwrap();
       setIsPaymentModalOpen(false);
     } catch (err) {
-      alert("Failed to update payment: " + (err.data?.error || err.message));
+      setPaymentError(err.data?.error || err.message || "Failed to record payment");
     }
   };
 
@@ -81,24 +105,44 @@ Bank: ${companyConfig.bankDetails.bankName} | A/C: ${companyConfig.bankDetails.a
 Thank you for choosing 1st Om Packers & Movers!`;
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-12 max-w-5xl mx-auto">
       {/* Top Bar (Hidden in Print) */}
-      <div className="flex items-center justify-between gap-2 print:hidden">
-        <button
-          onClick={() => navigate("/invoices")}
-          className="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 flex items-center gap-1 text-xs cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Invoices List</span>
-        </button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs print:hidden">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => navigate("/invoices")}
+            className="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 flex items-center gap-1 text-xs cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Invoices List</span>
+          </button>
 
-        <div className="flex items-center gap-2">
+          {invoice.jobId && (
+            <Link
+              to={`/jobs/${invoice.jobId}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 rounded-xl text-xs font-semibold transition-colors"
+            >
+              <Truck className="w-3.5 h-3.5" />
+              <span>← Job #{invoice.jobId}</span>
+            </Link>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleOpenPaymentModal}
+            className="flex items-center gap-1.5 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            <CreditCard className="w-4 h-4" />
+            <span>Record Payment</span>
+          </button>
+
           <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span className="hidden sm:inline">Print / Save PDF</span>
+            <span className="hidden sm:inline">Print / PDF</span>
           </button>
 
           <a
@@ -107,203 +151,224 @@ Thank you for choosing 1st Om Packers & Movers!`;
             )}`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors"
+            className="flex items-center gap-1.5 py-2 px-3 bg-green-600 hover:bg-green-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors"
           >
             <MessageSquare className="w-4 h-4" />
             <span>WhatsApp Bill</span>
           </a>
-
-          <button
-            onClick={() => setIsPaymentModalOpen(true)}
-            className="flex items-center gap-1.5 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
-          >
-            <DollarSign className="w-4 h-4" />
-            <span>Record Payment</span>
-          </button>
         </div>
       </div>
 
-      {/* Printable Invoice Sheet */}
+      {/* Invoice Document Paper Sheet */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6 print:border-none print:shadow-none print:p-0">
-        {/* Header */}
-        <div className="border-b border-slate-200 pb-5 flex flex-col sm:flex-row justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="bg-blue-900 text-white p-2 rounded-xl">
-                <Truck className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-blue-950 uppercase tracking-tight">
-                  {companyConfig.name}
-                </h1>
-                <p className="text-xs text-slate-500 font-medium">{companyConfig.tagline}</p>
-              </div>
+        {/* Header Strip */}
+        <div className="flex justify-between items-start border-b border-slate-100 pb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-md">
+              1OM
             </div>
-            <div className="text-xs text-slate-600 mt-2 space-y-0.5">
-              <p>{companyConfig.headOffice.address}, {companyConfig.headOffice.city}, {companyConfig.headOffice.state}</p>
-              <p>Phone: {companyConfig.phone} | Email: {companyConfig.email}</p>
-              <p className="font-semibold text-slate-900">
-                GSTIN: {companyConfig.gstin} | PAN: {companyConfig.pan}
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                {companyConfig.name}
+              </h1>
+              <p className="text-xs text-slate-500 font-medium">{companyConfig.tagline}</p>
+              <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                GSTIN: {companyConfig.legal.gstin} | PAN: {companyConfig.legal.pan} | SAC: {invoice.sacCode || "9965"}
               </p>
             </div>
           </div>
 
-          <div className="sm:text-right space-y-1">
-            <span className="inline-block bg-blue-900 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-              Tax Invoice
+          <div className="text-right">
+            <span
+              className={`inline-block px-3 py-1 font-black text-xs rounded-lg uppercase tracking-wider mb-1 font-mono ${
+                invoice.paymentStatus === "paid"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : invoice.paymentStatus === "partial"
+                  ? "bg-amber-50 text-amber-700 border border-amber-200"
+                  : "bg-rose-50 text-rose-700 border border-rose-200"
+              }`}
+            >
+              Tax Invoice • {invoice.paymentStatus}
             </span>
-            <p className="text-base font-mono font-bold text-slate-900">{invoice.invoiceNumber}</p>
-            <p className="text-xs text-slate-500">
-              Date: {new Date(invoice.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-            </p>
-            <p className="text-xs text-slate-500">SAC Code: <span className="font-mono font-semibold">{invoice.sacCode}</span></p>
-            <div className="pt-1">
-              <span
-                className={`text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase ${
-                  invoice.paymentStatus === "paid"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : invoice.paymentStatus === "partial"
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-rose-100 text-rose-800"
-                }`}
-              >
-                {invoice.paymentStatus}
-              </span>
+            <div className="text-sm font-mono font-bold text-slate-900">{invoice.invoiceNumber}</div>
+            <div className="text-xs text-slate-500">
+              Date: {new Date(invoice.createdAt).toLocaleDateString("en-IN")}
             </div>
           </div>
         </div>
 
-        {/* Customer & Route Details */}
-        <div className="bg-slate-50 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        {/* Billed To & Addresses */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/70 p-4 rounded-xl border border-slate-100 text-xs">
           <div>
-            <h4 className="font-bold text-slate-500 uppercase tracking-wider text-[11px] mb-1">
-              Billed To (Customer Details)
-            </h4>
-            <p className="text-sm font-bold text-slate-900">{invoice.customerName}</p>
-            <p className="font-mono text-slate-600">Phone: {invoice.customerPhone}</p>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Billed To Customer
+            </span>
+            <div className="text-sm font-bold text-slate-900 mt-0.5">{invoice.customerName}</div>
+            <div className="text-slate-600 font-mono mt-0.5">+91 {invoice.customerPhone}</div>
             {invoice.customerGstin && (
-              <p className="font-mono text-blue-900 font-semibold mt-0.5">
-                GSTIN: {invoice.customerGstin}
-              </p>
+              <div className="text-slate-500 font-mono text-[11px] mt-0.5">
+                GSTIN: <strong>{invoice.customerGstin}</strong>
+              </div>
             )}
           </div>
+
           <div>
-            <h4 className="font-bold text-slate-500 uppercase tracking-wider text-[11px] mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Relocation Addresses
-            </h4>
-            <p className="text-slate-800"><span className="font-semibold">From:</span> {invoice.pickupAddress}</p>
-            <p className="text-slate-800"><span className="font-semibold">To:</span> {invoice.deliveryAddress}</p>
+            </span>
+            <div className="text-slate-700 mt-1">
+              <strong>Pickup:</strong> {invoice.pickupAddress}
+            </div>
+            <div className="text-slate-700 mt-1">
+              <strong>Delivery:</strong> {invoice.deliveryAddress}
+            </div>
           </div>
         </div>
 
-        {/* Invoice Line Items Table */}
-        <div className="border border-slate-200 rounded-xl overflow-hidden">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+        {/* Line Items Table */}
+        <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+          <table className="w-full">
+            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
               <tr>
-                <th className="py-2.5 px-3">Description of Services</th>
-                <th className="py-2.5 px-3">SAC Code</th>
-                <th className="py-2.5 px-3 text-right">Amount (₹)</th>
+                <th className="py-2.5 px-4 text-left">Service Description</th>
+                <th className="py-2.5 px-4 text-center w-24">SAC Code</th>
+                <th className="py-2.5 px-4 text-right w-32">Amount (₹)</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody className="divide-y divide-slate-100">
               <tr>
-                <td className="py-3 px-3">
-                  <p className="font-semibold text-slate-900">
-                    Household / Commercial Relocation & Transportation Charges
-                  </p>
-                  <p className="text-slate-500 text-[11px]">
-                    Includes dedicated vehicle freight, professional packaging material, loading and unloading.
-                  </p>
+                <td className="py-3 px-4">
+                  <div className="font-semibold text-slate-800">
+                    Comprehensive Packers & Movers Service
+                  </div>
+                  <div className="text-slate-500 text-[11px] mt-0.5">
+                    Safe loading, highway container transit, unloading, unpacking & domestic relocation
+                  </div>
                 </td>
-                <td className="py-3 px-3 font-mono">{invoice.sacCode}</td>
-                <td className="py-3 px-3 text-right font-mono font-semibold">
+                <td className="py-3 px-4 text-center font-mono text-slate-600">{invoice.sacCode || "9965"}</td>
+                <td className="py-3 px-4 text-right font-mono font-semibold text-slate-800">
                   ₹{invoice.subtotal.toLocaleString("en-IN")}
                 </td>
               </tr>
-              {invoice.gstAmount > 0 && (
-                <tr>
-                  <td colSpan={2} className="py-2 px-3 font-medium text-slate-600 text-right">
-                    Goods & Services Tax (GST @ {invoice.gstRate}%)
-                  </td>
-                  <td className="py-2 px-3 text-right font-mono font-semibold">
-                    ₹{invoice.gstAmount.toLocaleString("en-IN")}
-                  </td>
-                </tr>
-              )}
             </tbody>
-            <tfoot className="border-t border-slate-200 bg-slate-50">
-              <tr>
-                <td colSpan={2} className="py-2.5 px-3 font-bold text-slate-800 text-right">
-                  Total Bill Amount:
-                </td>
-                <td className="py-2.5 px-3 text-right font-mono font-bold text-sm text-slate-900">
-                  ₹{invoice.totalAmount.toLocaleString("en-IN")}
-                </td>
-              </tr>
-              <tr>
-                <td colSpan={2} className="py-2 px-3 font-semibold text-emerald-700 text-right">
-                  Advance / Payment Received:
-                </td>
-                <td className="py-2 px-3 text-right font-mono font-semibold text-emerald-700">
-                  -₹{invoice.advancePaid.toLocaleString("en-IN")}
-                </td>
-              </tr>
-              <tr className="bg-slate-900 text-white font-black text-sm">
-                <td colSpan={2} className="py-3 px-3 text-right uppercase tracking-wider">
-                  Net Balance Due on Delivery:
-                </td>
-                <td className="py-3 px-3 text-right font-mono text-base text-amber-400">
-                  ₹{invoice.balanceDue.toLocaleString("en-IN")}
-                </td>
-              </tr>
-            </tfoot>
           </table>
         </div>
 
-        {/* Dynamic UPI Payment QR Code & Bank Information */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <div className="space-y-1 text-xs text-slate-700">
-            <h5 className="font-bold text-slate-900 flex items-center gap-1.5">
-              <Building2 className="w-4 h-4 text-blue-600" />
-              <span>Bank & Payment Details</span>
-            </h5>
-            <p>A/C Name: <span className="font-semibold">{companyConfig.bankDetails.accountName}</span></p>
-            <p>Bank: {companyConfig.bankDetails.bankName} ({companyConfig.bankDetails.branch})</p>
-            <p>A/C No: <span className="font-mono font-bold">{companyConfig.bankDetails.accountNumber}</span></p>
-            <p>IFSC: <span className="font-mono font-bold">{companyConfig.bankDetails.ifsc}</span></p>
-            <p className="text-blue-900 font-bold">UPI ID: {companyConfig.upi.id}</p>
+        {/* Pricing & Balance Calculation */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+          {/* UPI QR Payment Block */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center gap-4">
+            <div className="bg-white p-2 rounded-xl border border-slate-200 shrink-0">
+              <QRCodeSVG value={upiPayload} size={90} />
+            </div>
+            <div className="text-xs space-y-1">
+              <div className="font-bold text-slate-900 flex items-center gap-1">
+                <QrCode className="w-4 h-4 text-blue-600" />
+                <span>Instant UPI Payment</span>
+              </div>
+              <p className="text-slate-500 text-[11px]">
+                Scan with GPay, PhonePe, or Paytm to settle balance directly
+              </p>
+              <div className="font-mono text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded inline-block">
+                {companyConfig.upi.id}
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-col items-center sm:items-end text-center sm:text-right space-y-1">
-            <div className="bg-white p-2 rounded-xl shadow-xs border border-slate-200 inline-block">
-              <QRCodeSVG value={upiPayload} size={110} level="M" />
+          {/* Amount Summary */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 text-xs">
+            <div className="flex justify-between py-2 px-3 bg-slate-50 font-medium">
+              <span className="text-slate-600">Taxable Shifting Charges</span>
+              <span className="font-mono">₹{invoice.subtotal.toLocaleString("en-IN")}</span>
             </div>
-            <p className="text-[11px] font-bold text-slate-800 flex items-center gap-1">
-              <QrCode className="w-3.5 h-3.5 text-blue-600" />
-              <span>Scan with GPay / PhonePe / Paytm</span>
-            </p>
-            <p className="text-[10px] text-slate-500">
-              Instant settlement to {companyConfig.upi.id}
-            </p>
+            {invoice.gstRate > 0 && (
+              <div className="flex justify-between py-2 px-3">
+                <span className="text-slate-600">GST ({invoice.gstRate}%)</span>
+                <span className="font-mono">₹{invoice.gstAmount.toLocaleString("en-IN")}</span>
+              </div>
+            )}
+            <div className="flex justify-between py-2.5 px-3 font-bold text-slate-900 bg-slate-50">
+              <span>Total Invoice Amount</span>
+              <span className="font-mono">₹{invoice.totalAmount.toLocaleString("en-IN")}</span>
+            </div>
+            <div className="flex justify-between py-2 px-3 text-emerald-700 bg-emerald-50/50">
+              <span>Advance Paid</span>
+              <span className="font-mono font-semibold">₹{invoice.advancePaid.toLocaleString("en-IN")}</span>
+            </div>
+            <div className="flex justify-between py-2.5 px-3 bg-blue-50/80 text-blue-900 font-black text-sm border-t-2 border-blue-200">
+              <span>Balance Due</span>
+              <span className="font-mono text-base text-blue-700">₹{invoice.balanceDue.toLocaleString("en-IN")}</span>
+            </div>
           </div>
         </div>
 
-        {/* Footer Notes */}
-        <div className="pt-2 text-slate-400 text-[10px] flex justify-between items-center border-t border-slate-100">
-          <p>Subject to Ranchi jurisdiction. This is a computer-generated tax invoice.</p>
-          <p className="font-bold text-slate-600">Authorised Signatory for {companyConfig.name}</p>
+        {/* Customer Payment History Table (Visible on Screen & Print) */}
+        {payments.length > 0 && (
+          <div className="pt-4 border-t border-slate-100 space-y-2">
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Recorded Payment Receipts</span>
+            </h4>
+            <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+              <table className="w-full">
+                <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="py-2 px-3 text-left">Date</th>
+                    <th className="py-2 px-3 text-left">Mode</th>
+                    <th className="py-2 px-3 text-left">Reference / Notes</th>
+                    <th className="py-2 px-3 text-right">Amount Received</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {payments.map((p, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50">
+                      <td className="py-2 px-3 font-mono">{p.paymentDate}</td>
+                      <td className="py-2 px-3 uppercase font-medium">{p.paymentMode}</td>
+                      <td className="py-2 px-3 text-slate-500">{p.transactionRef || p.notes || "—"}</td>
+                      <td className="py-2 px-3 text-right font-mono font-bold text-emerald-700">
+                        ₹{Number(p.amount).toLocaleString("en-IN")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Bank Details & Terms */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100 text-[11px] text-slate-500">
+          <div>
+            <h5 className="font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Bank Account for Direct NEFT / RTGS
+            </h5>
+            <p>Bank: <strong>{companyConfig.bankDetails.bankName}</strong></p>
+            <p>Account: <strong>{companyConfig.bankDetails.accountNumber}</strong></p>
+            <p>IFSC: <strong>{companyConfig.bankDetails.ifsc}</strong></p>
+          </div>
+          <div>
+            <h5 className="font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Notice & Terms
+            </h5>
+            <p>
+              Please make all cheques or digital payments payable to <strong>{companyConfig.legal.legalName}</strong>. 
+              Payment is due upon successful unloading & verification at destination.
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Record Payment Modal */}
       {isPaymentModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900">
-                Record Payment / Update Advance
-              </h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Record Customer Payment
+                </h3>
+              </div>
               <button
                 onClick={() => setIsPaymentModalOpen(false)}
                 className="text-slate-400 hover:text-slate-700 p-1"
@@ -312,46 +377,87 @@ Thank you for choosing 1st Om Packers & Movers!`;
               </button>
             </div>
 
-            <form onSubmit={handleUpdatePayment} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Total Advance Paid So Far (₹)
-                </label>
+            {paymentError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>{paymentError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleRecordPaymentSubmit} className="space-y-3.5 text-xs">
+              <FormField label="Payment Amount (₹)" required>
                 <input
                   type="number"
+                  min="1"
                   required
-                  value={newAdvancePaid}
-                  onChange={(e) => setNewAdvancePaid(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-mono"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:border-blue-500 outline-none"
                 />
                 <span className="text-[11px] text-slate-500 mt-1 block">
-                  Total Bill: ₹{invoice.totalAmount.toLocaleString("en-IN")} | Balance remaining will be: ₹
-                  {Math.max(0, invoice.totalAmount - (Number(newAdvancePaid) || 0)).toLocaleString("en-IN")}
+                  Current Balance Due: <strong>₹{invoice.balanceDue.toLocaleString("en-IN")}</strong>
                 </span>
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Payment Mode" required>
+                  <select
+                    value={paymentMode}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:border-blue-500 outline-none cursor-pointer"
+                  >
+                    <option value="upi">UPI</option>
+                    <option value="cash">Cash</option>
+                    <option value="neft">Bank / NEFT</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="other">Other</option>
+                  </select>
+                </FormField>
+
+                <FormField label="Payment Date" required>
+                  <input
+                    type="date"
+                    required
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 outline-none"
+                  />
+                </FormField>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Payment Mode
-                </label>
-                <select
-                  value={paymentMode}
-                  onChange={(e) => setPaymentMode(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white"
-                >
-                  <option>UPI</option>
-                  <option>Cash</option>
-                  <option>Bank Transfer</option>
-                  <option>Cheque</option>
-                </select>
-              </div>
+              <FormField label="UTR / Transaction Reference (Optional)">
+                <input
+                  type="text"
+                  value={transactionRef}
+                  onChange={(e) => setTransactionRef(e.target.value)}
+                  placeholder="e.g. UPI Ref / Bank Txn ID"
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono focus:border-blue-500 outline-none"
+                />
+              </FormField>
+
+              <FormField label="Notes / Remarks">
+                <input
+                  type="text"
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  placeholder="e.g. Paid balance upon delivery"
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 outline-none"
+                />
+              </FormField>
 
               <button
                 type="submit"
-                disabled={updatingPayment}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl transition-colors cursor-pointer"
+                disabled={recordingPayment}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                {updatingPayment ? "Updating..." : "Save Payment Record"}
+                {recordingPayment ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving Payment...</span>
+                  </>
+                ) : (
+                  <span>Save Payment & Update Balance</span>
+                )}
               </button>
             </form>
           </div>

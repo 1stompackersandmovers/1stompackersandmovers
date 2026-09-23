@@ -5,17 +5,21 @@ import { useAuth } from "../../store/AuthContext";
 import AdminPanelLayout from "./AdminPanelLayout";
 import Login from "./pages/Auth/Login";
 import LeadsList from "./pages/Leads/LeadsList";
+import LeadDetail from "./pages/Leads/LeadDetail";
 import QuotesList from "./pages/Quotes/QuotesList";
 import QuoteBuilder from "./pages/Quotes/QuoteBuilder";
 import QuoteDetail from "./pages/Quotes/QuoteDetail";
 import JobsList from "./pages/Jobs/JobsList";
 import JobDetail from "./pages/Jobs/JobDetail";
+import FleetManagement from "./pages/Fleet/FleetManagement";
+import TeamManagement from "./pages/Team/TeamManagement";
 import InvoicesList from "./pages/Invoices/InvoicesList";
 import InvoiceBuilder from "./pages/Invoices/InvoiceBuilder";
 import InvoiceView from "./pages/Invoices/InvoiceView";
 import BiltiesList from "./pages/Bilties/BiltiesList";
 import BiltyBuilder from "./pages/Bilties/BiltyBuilder";
 import BiltyView from "./pages/Bilties/BiltyView";
+import FinanceDashboard from "./pages/Finance/FinanceDashboard";
 import Settings from "./pages/Settings/Settings";
 import NotFound from "./shared/components/NotFound";
 
@@ -56,15 +60,18 @@ const AdminPanelRoutes = () => {
 
         {/* Leads */}
         <Route path="leads" element={<LeadsList />} />
+        <Route path="leads/:id" element={<LeadDetail />} />
 
         {/* Quotes */}
         <Route path="quotes" element={<QuotesList />} />
         <Route path="quotes/new" element={<QuoteBuilder />} />
         <Route path="quotes/:id" element={<QuoteDetail />} />
 
-        {/* Jobs */}
+        {/* Jobs & Operations */}
         <Route path="jobs" element={<JobsList />} />
         <Route path="jobs/:id" element={<JobDetail />} />
+        <Route path="fleet" element={<FleetManagement />} />
+        <Route path="team" element={<TeamManagement />} />
 
         {/* Invoices */}
         <Route path="invoices" element={<InvoicesList />} />
@@ -75,6 +82,9 @@ const AdminPanelRoutes = () => {
         <Route path="bilties" element={<BiltiesList />} />
         <Route path="bilties/new" element={<BiltyBuilder />} />
         <Route path="bilties/:id" element={<BiltyView />} />
+
+        {/* Finance */}
+        <Route path="finance" element={<FinanceDashboard />} />
 
         {/* Settings */}
         <Route path="settings" element={<Settings />} />

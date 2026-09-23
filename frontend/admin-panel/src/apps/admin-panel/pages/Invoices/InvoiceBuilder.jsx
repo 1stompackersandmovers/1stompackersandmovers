@@ -1,14 +1,20 @@
-import React, { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
-import { ArrowLeft, Receipt, Building2, Calculator, ShieldCheck } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router";
+import { ArrowLeft, Receipt, Building2, Calculator, ShieldCheck, AlertCircle, Loader2, Truck } from "lucide-react";
 import { useCreateInvoiceMutation } from "../../../../store/apiSlices/invoicesApiSlice";
+import { useGetJobByIdQuery } from "../../../../store/apiSlices/jobsApiSlice";
 import { companyConfig } from "../../../../configs/company.config";
+import { FormField } from "../../../../components/FormField";
+import { useUnsavedChanges } from "../../../../hooks/useUnsavedChanges";
 
 const InvoiceBuilder = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { isDirty, setIsDirty, confirmNavigation, UnsavedModal } = useUnsavedChanges(navigate);
 
-  const [jobId, setJobId] = useState(searchParams.get("jobId") || "");
+  const jobId = searchParams.get("jobId") || "";
+  const { data: job } = useGetJobByIdQuery(jobId, { skip: !jobId });
+
   const [customerName, setCustomerName] = useState(searchParams.get("name") || "");
   const [customerPhone, setCustomerPhone] = useState(searchParams.get("phone") || "");
   const [customerGstin, setCustomerGstin] = useState("");
@@ -21,23 +27,49 @@ const InvoiceBuilder = () => {
   const [advancePaid, setAdvancePaid] = useState(5000);
   const [paymentMode, setPaymentMode] = useState("UPI");
 
+  const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState("");
+
   const [createInvoice, { isLoading: saving }] = useCreateInvoiceMutation();
+
+  const handleFieldChange = (setter) => (e) => {
+    setIsDirty(true);
+    setter(e.target.value);
+  };
 
   // Calculations
   const gstAmount = Math.round(((Number(subtotal) || 0) * (Number(gstRate) || 0)) / 100);
   const totalAmount = (Number(subtotal) || 0) + gstAmount;
   const balanceDue = Math.max(0, totalAmount - (Number(advancePaid) || 0));
 
+  const validate = () => {
+    const errs = {};
+    if (!customerName.trim()) errs.customerName = "Customer name is required";
+    if (!customerPhone.trim()) {
+      errs.customerPhone = "Phone number is required";
+    } else if (!/^\d{10}$/.test(customerPhone.trim())) {
+      errs.customerPhone = "Must be a 10-digit mobile number";
+    }
+    if (!pickupAddress.trim()) errs.pickupAddress = "Pickup address is required";
+    if (!deliveryAddress.trim()) errs.deliveryAddress = "Delivery address is required";
+    if (Number(subtotal) <= 0) errs.subtotal = "Subtotal must be greater than 0";
+    if (customerGstin.trim() && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(customerGstin.trim())) {
+      errs.customerGstin = "Invalid GSTIN format (e.g. 20AAAAA0000A1Z5)";
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!customerName || !customerPhone || !pickupAddress || !deliveryAddress) {
-      alert("Please fill in customer and address information.");
-      return;
-    }
+    setSubmitError("");
+    if (!validate()) return;
 
     try {
       const payload = {
         jobId: jobId ? Number(jobId) : undefined,
+        quoteId: job?.quoteId ? Number(job.quoteId) : undefined,
         customerName,
         customerPhone,
         customerGstin: customerGstin || undefined,
@@ -54,147 +86,154 @@ const InvoiceBuilder = () => {
       };
 
       const res = await createInvoice(payload).unwrap();
+      setIsDirty(false);
       navigate(`/invoices/${res.invoice.id}`);
     } catch (err) {
-      alert("Failed to generate invoice: " + (err.data?.error || err.message));
+      setSubmitError(err.data?.error || err.message || "Failed to generate invoice");
     }
   };
 
   return (
     <div className="space-y-6 pb-10">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 cursor-pointer"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Create GST Tax Invoice</h2>
-          <p className="text-xs text-slate-500">Official moving invoice with HSN/SAC code & UPI QR code</p>
+      <UnsavedModal />
+
+      {/* Top Bar */}
+      <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => confirmNavigation(jobId ? `/jobs/${jobId}` : "/invoices")}
+            className="p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Create GST Tax Invoice</h2>
+            <p className="text-xs text-slate-500">Official moving invoice with HSN/SAC code & UPI QR code</p>
+          </div>
         </div>
+
+        {jobId ? (
+          <div className="flex items-center gap-2 bg-blue-50 text-blue-800 border border-blue-200/80 px-3 py-1.5 rounded-xl text-xs font-semibold">
+            <Truck className="w-4 h-4 text-blue-600" />
+            <span>Linked to Job #{jobId}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 bg-amber-50 text-amber-800 border border-amber-200/80 px-3 py-1.5 rounded-xl text-xs font-semibold">
+            <AlertCircle className="w-4 h-4 text-amber-600" />
+            <span>Standalone Invoice</span>
+          </div>
+        )}
       </div>
+
+      {/* Submit Error Banner */}
+      {submitError && (
+        <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+            <span>{submitError}</span>
+          </div>
+          <button onClick={() => setSubmitError("")} className="text-rose-500 hover:text-rose-700 font-bold">×</button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Customer & Route */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs space-y-3">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
             <Building2 className="w-4 h-4 text-blue-600" />
             <span>Bill To & Relocation Addresses</span>
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Customer / Company Name *
-              </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField label="Customer / Company Name" required error={errors.customerName}>
               <input
                 type="text"
-                required
                 value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm"
+                onChange={handleFieldChange(setCustomerName)}
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Phone Number *
-              </label>
+            <FormField label="Phone Number" required error={errors.customerPhone}>
               <input
                 type="tel"
-                required
+                maxLength={10}
                 value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono"
+                onChange={handleFieldChange(setCustomerPhone)}
+                placeholder="10-digit mobile"
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Customer GSTIN (Optional - For Corporate Claims)
-              </label>
+            <FormField label="Customer GSTIN (Optional - Corporate Claims)" error={errors.customerGstin}>
               <input
                 type="text"
                 value={customerGstin}
-                onChange={(e) => setCustomerGstin(e.target.value)}
+                onChange={handleFieldChange(setCustomerGstin)}
                 placeholder="e.g. 20AAAAA0000A1Z5"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono uppercase"
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono uppercase focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                HSN / SAC Code
-              </label>
+            <FormField label="HSN / SAC Code">
               <input
                 type="text"
                 value={sacCode}
-                onChange={(e) => setSacCode(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono"
+                onChange={handleFieldChange(setSacCode)}
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Pickup Address *
-              </label>
+            <FormField label="Pickup Address" required error={errors.pickupAddress}>
               <input
                 type="text"
-                required
                 value={pickupAddress}
-                onChange={(e) => setPickupAddress(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm"
+                onChange={handleFieldChange(setPickupAddress)}
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Delivery Address *
-              </label>
+            <FormField label="Delivery Address" required error={errors.deliveryAddress}>
               <input
                 type="text"
-                required
                 value={deliveryAddress}
-                onChange={(e) => setDeliveryAddress(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm"
+                onChange={handleFieldChange(setDeliveryAddress)}
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               />
-            </div>
+            </FormField>
           </div>
         </div>
 
         {/* Amount & Payments */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs space-y-3">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
             <Calculator className="w-4 h-4 text-emerald-600" />
             <span>Charges & Payment Breakdown</span>
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Total Shifting & Freight Charges (Subtotal ₹) *
-              </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <FormField label="Total Shifting Charges (Subtotal ₹)" required error={errors.subtotal}>
               <input
                 type="number"
-                required
+                min="1"
                 value={subtotal}
-                onChange={(e) => setSubtotal(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-sm"
+                onChange={handleFieldChange(setSubtotal)}
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl font-mono text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                GST Tax Rate
-              </label>
+            <FormField label="GST Tax Rate Applicable">
               <div className="flex gap-2">
                 {[0, 5, 18].map((rate) => (
                   <button
                     type="button"
                     key={rate}
-                    onClick={() => setGstRate(rate)}
-                    className={`flex-1 py-2 rounded-xl font-bold transition-colors cursor-pointer ${
+                    onClick={() => {
+                      setIsDirty(true);
+                      setGstRate(rate);
+                    }}
+                    className={`flex-1 py-2.5 rounded-xl font-bold transition-all cursor-pointer ${
                       gstRate === rate
                         ? "bg-blue-600 text-white shadow-xs"
                         : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -204,50 +243,45 @@ const InvoiceBuilder = () => {
                   </button>
                 ))}
               </div>
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Advance Paid Amount (₹)
-              </label>
+            <FormField label="Advance Paid Amount (₹)">
               <input
                 type="number"
+                min="0"
                 value={advancePaid}
-                onChange={(e) => setAdvancePaid(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-sm"
+                onChange={handleFieldChange(setAdvancePaid)}
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl font-mono text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Payment Mode
-              </label>
+            <FormField label="Advance Payment Mode">
               <select
                 value={paymentMode}
-                onChange={(e) => setPaymentMode(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white"
+                onChange={handleFieldChange(setPaymentMode)}
+                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer"
               >
-                <option>UPI</option>
-                <option>Bank Transfer / NEFT</option>
-                <option>Cash</option>
-                <option>Cheque</option>
+                <option value="UPI">UPI</option>
+                <option value="Bank Transfer / NEFT">Bank Transfer / NEFT</option>
+                <option value="Cash">Cash</option>
+                <option value="Cheque">Cheque</option>
               </select>
-            </div>
+            </FormField>
           </div>
 
           {/* Real-time Summary Box */}
-          <div className="bg-slate-900 text-white rounded-xl p-3.5 space-y-1.5 text-xs">
+          <div className="bg-slate-900 text-white rounded-xl p-4 space-y-2 text-xs">
             <div className="flex justify-between text-slate-300">
               <span>Subtotal:</span>
-              <span className="font-mono">₹{Number(subtotal).toLocaleString("en-IN")}</span>
+              <span className="font-mono font-medium">₹{Number(subtotal).toLocaleString("en-IN")}</span>
             </div>
             {gstRate > 0 && (
               <div className="flex justify-between text-slate-300">
                 <span>GST ({gstRate}%):</span>
-                <span className="font-mono">₹{gstAmount.toLocaleString("en-IN")}</span>
+                <span className="font-mono font-medium">₹{gstAmount.toLocaleString("en-IN")}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm font-bold text-white pt-1 border-t border-slate-800">
+            <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-slate-800">
               <span>Total Invoice Amount:</span>
               <span className="font-mono">₹{totalAmount.toLocaleString("en-IN")}</span>
             </div>
@@ -255,7 +289,7 @@ const InvoiceBuilder = () => {
               <span>Advance Paid:</span>
               <span className="font-mono">₹{Number(advancePaid).toLocaleString("en-IN")}</span>
             </div>
-            <div className="flex justify-between text-sm font-black text-amber-400 pt-1 border-t border-slate-800">
+            <div className="flex justify-between text-sm font-black text-amber-400 pt-2 border-t border-slate-800">
               <span>Balance Due on Delivery:</span>
               <span className="font-mono">₹{balanceDue.toLocaleString("en-IN")}</span>
             </div>
@@ -265,9 +299,19 @@ const InvoiceBuilder = () => {
         <button
           type="submit"
           disabled={saving}
-          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md transition-all active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md shadow-blue-500/20 transition-all active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
         >
-          {saving ? "Generating Tax Invoice..." : "Generate Official Tax Invoice"}
+          {saving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Generating Tax Invoice...</span>
+            </>
+          ) : (
+            <>
+              <Receipt className="w-4 h-4" />
+              <span>Generate Official Tax Invoice</span>
+            </>
+          )}
         </button>
       </form>
     </div>

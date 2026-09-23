@@ -5,3 +5,7 @@ export * from "./jobs";
 export * from "./invoices";
 export * from "./bilties";
 export * from "./settings";
+export * from "./vehicles";
+export * from "./staff";
+export * from "./job_resources";
+export * from "./invoice_payments";

@@ -13,6 +13,8 @@ import {
   ChevronRight,
   ExternalLink,
   Settings,
+  Users,
+  TrendingUp,
 } from "lucide-react";
 import { useAuth } from "../../store/AuthContext";
 import { companyConfig } from "../../configs/company.config";
@@ -61,22 +63,57 @@ const AdminPanelLayout = () => {
     navigate("/login");
   };
 
-  const navItems = [
+  const navSections = [
+    {
+      title: "Sales Pipeline",
+      items: [
+        { to: "/leads", label: "Leads", icon: Inbox },
+        { to: "/quotes", label: "Quotes", icon: FileSpreadsheet },
+      ],
+    },
+    {
+      title: "Operations & Fleet",
+      items: [
+        { to: "/jobs", label: "Jobs", icon: Truck },
+        { to: "/fleet", label: "Fleet", icon: Truck },
+        { to: "/team", label: "Team", icon: Users },
+      ],
+    },
+    {
+      title: "Finance & Accounts",
+      items: [
+        { to: "/finance", label: "Finance", icon: TrendingUp },
+        { to: "/invoices", label: "Invoices", icon: Receipt },
+        { to: "/bilties", label: "Bilty (LR)", icon: FileText },
+      ],
+    },
+    {
+      title: "Configuration",
+      items: [
+        { to: "/settings", label: "Settings", icon: Settings },
+      ],
+    },
+  ];
+
+  const mobileBottomNavItems = [
     { to: "/leads", label: "Leads", icon: Inbox },
     { to: "/quotes", label: "Quotes", icon: FileSpreadsheet },
     { to: "/jobs", label: "Jobs", icon: Truck },
+    { to: "/fleet", label: "Fleet", icon: Truck },
+    { to: "/finance", label: "Finance", icon: TrendingUp },
     { to: "/invoices", label: "Invoices", icon: Receipt },
-    { to: "/bilties", label: "Bilty (LR)", icon: FileText },
-    { to: "/settings", label: "Settings", icon: Settings },
   ];
 
   // Helper to get active page title & breadcrumbs
   const getPageInfo = () => {
     const p = location.pathname;
-    if (p.startsWith("/leads")) return { title: "Inquiries & Leads", category: "Operations", desc: "Real-time web requests & customer calls" };
-    if (p.startsWith("/quotes")) return { title: "Quotations", category: "Operations", desc: "Estimates & rate quotes issued" };
-    if (p.startsWith("/jobs")) return { title: "Active Jobs & Moves", category: "Operations", desc: "Scheduled relocations, dispatch & vehicle allocation" };
-    if (p.startsWith("/invoices")) return { title: "Billing & Invoices", category: "Finance", desc: "Tax invoices & billing" };
+    if (p.startsWith("/leads")) return { title: "Inquiries & Leads", category: "Sales", desc: "Real-time web requests & customer calls" };
+    if (p.startsWith("/quotes")) return { title: "Quotations", category: "Sales", desc: "Estimates & rate quotes issued" };
+    if (p.startsWith("/jobs")) return { title: "Active Jobs & Moves", category: "Operations", desc: "Scheduled relocations, dispatch & crew assignment" };
+    if (p.startsWith("/fleet")) return { title: "Fleet Management", category: "Operations", desc: "Vehicles, maintenance & document expiries" };
+    if (p.startsWith("/team")) return { title: "Crew & Team", category: "Operations", desc: "Drivers, packers, loaders & daily attendance" };
+    if (p.startsWith("/finance")) return { title: "Financial Overview", category: "Finance", desc: "Revenue collections, payroll & move profitability" };
+    if (p.startsWith("/invoices")) return { title: "Billing & Invoices", category: "Finance", desc: "Tax invoices, customer payments & balance ledger" };
     if (p.startsWith("/bilties")) return { title: "Consignment Notes (LR)", category: "Logistics", desc: "Official transport bilties & driver dispatch" };
     if (p.startsWith("/settings")) return { title: "System & Company Settings", category: "System", desc: "Manage company identity, tax compliance, payments, and admin preferences" };
     return { title: "Dashboard", category: "Operations", desc: "Overview & metrics" };
@@ -117,48 +154,50 @@ const AdminPanelLayout = () => {
         </div>
 
         {/* Navigation Sections */}
-        <div className="flex-1 overflow-y-auto px-2 py-4 space-y-4 overflow-x-hidden">
-          {desktopSidebarOpen && (
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3">
-              Operations
+        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-3 overflow-x-hidden">
+          {navSections.map((sec, sIdx) => (
+            <div key={sIdx} className="space-y-1">
+              {desktopSidebarOpen && (
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pt-1 pb-0.5">
+                  {sec.title}
+                </div>
+              )}
+              {sec.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    title={!desktopSidebarOpen ? item.label : undefined}
+                    className={({ isActive }) =>
+                      `flex items-center rounded-xl font-medium text-xs sm:text-sm transition-all group ${
+                        desktopSidebarOpen
+                          ? "px-3 py-2 gap-3"
+                          : "w-11 h-11 justify-center mx-auto"
+                      } ${
+                        isActive
+                          ? "bg-blue-600 text-white shadow-sm shadow-blue-500/25 font-semibold"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <Icon
+                          className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
+                            isActive ? "text-white" : "text-slate-400 group-hover:text-blue-600"
+                          }`}
+                        />
+                        {desktopSidebarOpen && (
+                          <span className="truncate">{item.label}</span>
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                );
+              })}
             </div>
-          )}
-          <nav className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  title={!desktopSidebarOpen ? item.label : undefined}
-                  className={({ isActive }) =>
-                    `flex items-center rounded-xl font-medium text-xs sm:text-sm transition-all group ${
-                      desktopSidebarOpen
-                        ? "px-3 py-2.5 gap-3"
-                        : "w-11 h-11 justify-center mx-auto"
-                    } ${
-                      isActive
-                        ? "bg-blue-600 text-white shadow-sm shadow-blue-500/25 font-semibold"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <Icon
-                        className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${
-                          isActive ? "text-white" : "text-slate-400 group-hover:text-blue-600"
-                        }`}
-                      />
-                      {desktopSidebarOpen && (
-                        <span className="truncate">{item.label}</span>
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              );
-            })}
-          </nav>
+          ))}
         </div>
 
         {/* User / Session Profile Footer */}
@@ -238,32 +277,34 @@ const AdminPanelLayout = () => {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-4">
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2">
-                Operations
-              </div>
-              <div className="space-y-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-all ${
-                          isActive
-                            ? "bg-blue-600 text-white font-semibold shadow-xs"
-                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                        }`
-                      }
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </NavLink>
-                  );
-                })}
-              </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              {navSections.map((sec, sIdx) => (
+                <div key={sIdx} className="space-y-1">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 pt-1">
+                    {sec.title}
+                  </div>
+                  {sec.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-3 py-2 rounded-xl font-medium text-sm transition-all ${
+                            isActive
+                              ? "bg-blue-600 text-white font-semibold shadow-xs"
+                              : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                          }`
+                        }
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
 
             {/* Mobile Footer */}
@@ -359,7 +400,7 @@ const AdminPanelLayout = () => {
       {/* Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-2 py-1.5">
         <div className="grid grid-cols-6 gap-1 text-center">
-          {navItems.map((item) => {
+          {mobileBottomNavItems.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink

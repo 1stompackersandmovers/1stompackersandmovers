@@ -60,10 +60,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   const setAdminProfile = (profileData) => {
-    setAdmin((prev) => ({
-      ...prev,
-      ...profileData,
-    }));
+    if (!profileData) return;
+    setAdmin((prev) => {
+      if (!prev) return profileData;
+      const isIdentical = Object.keys(profileData).every(
+        (key) => prev[key] === profileData[key]
+      );
+      if (isIdentical) return prev;
+      return {
+        ...prev,
+        ...profileData,
+      };
+    });
   };
 
   const logout = () => {

@@ -5,6 +5,8 @@ import {
   handleGetLeads,
   handleUpdateLead,
   handleCreateManualLead,
+  handleGetLeadById,
+  handleGetLeadPipeline,
   handleCreateQuotation,
   handleGetQuotations,
   handleGetQuotationById,
@@ -13,10 +15,21 @@ import {
   handleGetJobs,
   handleGetJobById,
   handleUpdateJob,
+  handleGetJobResources,
+  handleAssignVehiclesToJob,
+  handleRemoveVehicleFromJob,
+  handleAssignStaffToJob,
+  handleRemoveStaffFromJob,
+  handleUpdateStaffPayment,
+  handleAddJobExpense,
+  handleDeleteJobExpense,
+  handleGetJobProfitSummary,
   handleCreateInvoice,
   handleGetInvoices,
   handleGetInvoiceById,
   handleUpdateInvoicePayment,
+  handleRecordInvoicePayment,
+  handleGetInvoicePayments,
   handleCreateBilty,
   handleGetBilties,
   handleGetBiltyById,
@@ -30,6 +43,20 @@ import {
   handleUpdateAdminProfile,
   handleChangePassword,
   handleToggle2FA,
+  handleGetVehicles,
+  handleGetVehicleById,
+  handleCreateVehicle,
+  handleUpdateVehicle,
+  handleDeleteVehicle,
+  handleGetStaff,
+  handleGetStaffById,
+  handleCreateStaff,
+  handleUpdateStaff,
+  handleDeleteStaff,
+  handleGetFinanceSummary,
+  handleGetMonthlyRevenue,
+  handleGetTopRoutes,
+  handleGetPendingPayroll,
 } from "../controllers/admin.controller";
 import { authMiddleware } from "../middlewares/auth";
 import { Bindings } from "../types";
@@ -54,9 +81,11 @@ adminRouter.patch("/profile", handleUpdateAdminProfile);
 adminRouter.patch("/change-password", handleChangePassword);
 adminRouter.patch("/toggle-2fa", handleToggle2FA);
 
-// Leads
+// Leads & Pipeline
 adminRouter.get("/leads", handleGetLeads);
 adminRouter.post("/leads/manual", handleCreateManualLead);
+adminRouter.get("/leads/:id", handleGetLeadById);
+adminRouter.get("/leads/:id/pipeline", handleGetLeadPipeline);
 adminRouter.patch("/leads/:id", handleUpdateLead);
 
 // Quotations
@@ -65,22 +94,53 @@ adminRouter.post("/quotes", handleCreateQuotation);
 adminRouter.get("/quotes/:id", handleGetQuotationById);
 adminRouter.patch("/quotes/:id/status", handleUpdateQuotationStatus);
 
-// Jobs
+// Jobs & Operations
 adminRouter.get("/jobs", handleGetJobs);
 adminRouter.post("/jobs", handleCreateJob);
 adminRouter.get("/jobs/:id", handleGetJobById);
 adminRouter.patch("/jobs/:id", handleUpdateJob);
+adminRouter.get("/jobs/:id/resources", handleGetJobResources);
+adminRouter.post("/jobs/:id/assign-vehicles", handleAssignVehiclesToJob);
+adminRouter.delete("/jobs/:id/vehicles/:vehicleId", handleRemoveVehicleFromJob);
+adminRouter.post("/jobs/:id/assign-staff", handleAssignStaffToJob);
+adminRouter.delete("/jobs/:id/staff/:staffId", handleRemoveStaffFromJob);
+adminRouter.patch("/jobs/:id/staff/:staffId/payment", handleUpdateStaffPayment);
+adminRouter.post("/jobs/:id/expenses", handleAddJobExpense);
+adminRouter.delete("/jobs/:id/expenses/:expenseId", handleDeleteJobExpense);
+adminRouter.get("/jobs/:id/profit", handleGetJobProfitSummary);
 
-// Invoices
+// Fleet Management
+adminRouter.get("/vehicles", handleGetVehicles);
+adminRouter.post("/vehicles", handleCreateVehicle);
+adminRouter.get("/vehicles/:id", handleGetVehicleById);
+adminRouter.patch("/vehicles/:id", handleUpdateVehicle);
+adminRouter.delete("/vehicles/:id", handleDeleteVehicle);
+
+// Team / Staff Management
+adminRouter.get("/staff", handleGetStaff);
+adminRouter.post("/staff", handleCreateStaff);
+adminRouter.get("/staff/:id", handleGetStaffById);
+adminRouter.patch("/staff/:id", handleUpdateStaff);
+adminRouter.delete("/staff/:id", handleDeleteStaff);
+
+// Invoices & Customer Payments
 adminRouter.get("/invoices", handleGetInvoices);
 adminRouter.post("/invoices", handleCreateInvoice);
 adminRouter.get("/invoices/:id", handleGetInvoiceById);
 adminRouter.patch("/invoices/:id/payment", handleUpdateInvoicePayment);
+adminRouter.post("/invoices/:id/payments", handleRecordInvoicePayment);
+adminRouter.get("/invoices/:id/payments", handleGetInvoicePayments);
 
 // Bilties
 adminRouter.get("/bilties", handleGetBilties);
 adminRouter.post("/bilties", handleCreateBilty);
 adminRouter.get("/bilties/:id", handleGetBiltyById);
+
+// Finance & Analytics
+adminRouter.get("/finance/summary", handleGetFinanceSummary);
+adminRouter.get("/finance/monthly", handleGetMonthlyRevenue);
+adminRouter.get("/finance/top-routes", handleGetTopRoutes);
+adminRouter.get("/finance/pending-payroll", handleGetPendingPayroll);
 
 // Settings
 adminRouter.get("/settings", handleGetSettings);
