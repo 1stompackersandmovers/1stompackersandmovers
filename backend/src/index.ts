@@ -33,6 +33,11 @@ app.use(
   })
 );
 
+// Root status endpoint
+app.get("/", (c) => {
+  return c.json({ status: "ok", service: "1st-om-packers-api", version: "1.0.0" });
+});
+
 // Health check endpoint
 app.get("/health", (c) => {
   return c.json({ status: "ok", service: "1st-om-packers-api" });

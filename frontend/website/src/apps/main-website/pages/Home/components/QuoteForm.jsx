@@ -13,6 +13,8 @@ import {
   ArrowLeftRight,
   Shield,
   Clock,
+  AlertCircle,
+  Sparkles,
 } from "lucide-react";
 import CustomSelect from "../../../shared/components/CustomSelect";
 import Button from "../../../shared/components/Button";
@@ -224,6 +226,7 @@ const QuoteForm = ({
   const [form, setForm] = useState(initialForm);
   const [status, setStatus] = useState("idle"); // idle | submitting | success | error
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState("");
 
   // Sync state with URL query parameters and incoming props
   useEffect(() => {
@@ -301,14 +304,29 @@ const QuoteForm = ({
 
   const validate = () => {
     const errs = {};
-    if (!form.name.trim()) errs.name = "Please enter your full name.";
-    if (!form.phone.trim()) errs.phone = "Please enter your mobile number.";
-    else if (!/^[6-9]\d{9}$/.test(form.phone.replace(/\s/g, "")))
-      errs.phone = "Please enter a valid 10-digit Indian mobile number.";
-    if (!form.movingFrom.trim()) errs.movingFrom = "Please enter origin location.";
-    if (!form.movingTo.trim()) errs.movingTo = "Please enter destination location.";
+    if (!form.name.trim()) {
+      errs.name = "Please enter your full name.";
+    } else if (form.name.trim().length < 2) {
+      errs.name = "Full name must be at least 2 characters.";
+    }
+
+    if (!form.phone.trim()) {
+      errs.phone = "Please enter your mobile number.";
+    } else if (!/^[6-9]\d{9}$/.test(form.phone.replace(/\s/g, ""))) {
+      errs.phone = "Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).";
+    }
+
+    if (form.email && form.email.trim()) {
+      const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailPattern.test(form.email.trim())) {
+        errs.email = "Please enter a valid email address with a domain (e.g. name@example.com).";
+      }
+    }
+
+    if (!form.movingFrom.trim()) errs.movingFrom = "Please enter your origin location.";
+    if (!form.movingTo.trim()) errs.movingTo = "Please enter your destination location.";
     if (!form.moveType) errs.moveType = "Please select a move type.";
-    if (!form.timeline) errs.timeline = "Please select your timeline.";
+    if (!form.timeline) errs.timeline = "Please select your preferred timeline.";
     return errs;
   };
 
@@ -316,17 +334,20 @@ const QuoteForm = ({
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
+    if (serverError) setServerError("");
   };
 
   const handlePhoneChange = (e) => {
     const rawDigits = e.target.value.replace(/\D/g, "").slice(0, 10);
     setForm((prev) => ({ ...prev, phone: rawDigits }));
     if (errors.phone) setErrors((prev) => ({ ...prev, phone: undefined }));
+    if (serverError) setServerError("");
   };
 
   const handleSelectChange = (fieldName, selectedValue) => {
     setForm((prev) => ({ ...prev, [fieldName]: selectedValue }));
     if (errors[fieldName]) setErrors((prev) => ({ ...prev, [fieldName]: undefined }));
+    if (serverError) setServerError("");
   };
 
   const handleFromChange = (val) => {
@@ -399,9 +420,11 @@ const QuoteForm = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setServerError("");
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      setServerError("Please resolve the highlighted issues in the form before submitting.");
       return;
     }
 
@@ -420,12 +443,29 @@ const QuoteForm = ({
         body: JSON.stringify(form),
       });
 
-      if (!res.ok) throw new Error("Server error");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        setStatus("idle");
+        if (errorData.details) {
+          const fieldErrors = {};
+          for (const [field, messages] of Object.entries(errorData.details)) {
+            const firstMsg = Array.isArray(messages) ? messages[0] : messages;
+            fieldErrors[field] = firstMsg;
+          }
+          setErrors((prev) => ({ ...prev, ...fieldErrors }));
+          setServerError("Please correct the highlighted fields with red warnings below.");
+        } else {
+          setServerError(errorData.error || "Unable to submit your quote request. Please verify your details or call our team directly.");
+        }
+        return;
+      }
+
       setStatus("success");
       setForm(initialForm);
-    } catch {
-      // Graceful fallback for mock mode
-      setStatus("success");
+    } catch (err) {
+      console.error("Quote submission error:", err);
+      setStatus("idle");
+      setServerError("Unable to reach the relocation server. Please check your connection or call us directly at +91 7033488691.");
     }
   };
 
@@ -579,6 +619,22 @@ const QuoteForm = ({
             noValidate
             className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-7"
           >
+            {/* Top Alert Banner for Server/Validation Errors */}
+            {serverError && (
+              <div
+                className="sm:col-span-2 p-4 rounded-xl bg-danger/10 border border-danger/30 text-danger flex items-start gap-3 animate-in fade-in duration-200"
+                role="alert"
+              >
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-danger" />
+                <div className="space-y-0.5 text-left">
+                  <p className="text-sm font-semibold text-danger">{serverError}</p>
+                  <p className="text-xs text-danger/80">
+                    Please review the highlighted input fields below and correct them before continuing.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Name */}
             <div className="flex flex-col gap-2">
               <label htmlFor="name" className="text-sm font-semibold text-text tracking-wide">
@@ -840,33 +896,74 @@ const QuoteForm = ({
                 inputMode="email"
                 value={form.email}
                 onChange={handleChange}
-                className="w-full px-4 py-3.5 text-[0.95rem] text-text bg-background border border-border rounded-[var(--radius-md)] placeholder:text-text-muted hover:border-text-muted/60 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-150"
+                className={`w-full px-4 py-3.5 text-[0.95rem] text-text bg-background border rounded-[var(--radius-md)] placeholder:text-text-muted transition-all duration-150 ${
+                  errors.email
+                    ? "border-danger ring-4 ring-danger/10"
+                    : "border-border hover:border-text-muted/60 focus:border-primary focus:ring-4 focus:ring-primary/10"
+                }`}
                 placeholder="you@example.com"
+                aria-invalid={errors.email ? "true" : undefined}
+                aria-describedby={errors.email ? "email-error" : undefined}
               />
+              {errors.email && (
+                <p id="email-error" className="text-xs font-medium text-danger mt-0.5" role="alert">
+                  {errors.email}
+                </p>
+              )}
             </div>
 
             {/* Live Dynamic Price Range Indicator Banner */}
-            <div className="sm:col-span-2 p-4 rounded-2xl bg-gradient-to-r from-primary/5 via-surface to-accent/5 border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                    Instant Price Range Estimate
-                  </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                    {form.moveType || "Standard Move"}
-                  </span>
-                </div>
-                <p className="text-xs text-text-muted">
-                  Includes multi-layer protective packaging, professional loading, dedicated closed container & basic goods insurance.
-                </p>
+            <div className="relative mt-5 sm:col-span-2 rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.04] via-surface to-primary/[0.08] p-4.5 sm:p-5 shadow-xs transition-all">
+              {/* Embedded Top Tag / Offer Badge */}
+              <div className="absolute -top-3 left-4 sm:left-6 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold tracking-wide uppercase bg-primary text-white shadow-xs border border-white/20">
+                <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
+                <span>Instant Estimate</span>
+                <span className="text-white/40">•</span>
+                <span className="text-amber-200/95 font-semibold tracking-normal normal-case">Best Value Guarantee</span>
               </div>
-              <div className="sm:text-right shrink-0">
-                <div className="text-base sm:text-xl font-display font-extrabold text-primary">
-                  {fareEstimate.min} - {fareEstimate.max}
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 sm:pt-0.5">
+                <div className="space-y-1.5 min-w-0">
+                  <div className="flex items-center flex-wrap gap-2">
+                    <span className="text-xs font-semibold text-text-main flex items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5 text-primary shrink-0" />
+                      {form.moveType || "Standard Relocation"}
+                    </span>
+                    <span className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-500/20 inline-flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      All-Inclusive Package
+                    </span>
+                  </div>
+                  <p className="text-xs text-text-muted leading-relaxed">
+                    Includes 4-layer protective packaging, expert loading/unloading, dedicated closed vehicle & transit insurance.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 pt-0.5 text-[11px] text-text-muted font-medium">
+                    <span className="inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+                      Zero hidden charges
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+                      Free survey & consultation
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+                      On-time delivery
+                    </span>
+                  </div>
                 </div>
-                <span className="text-[11px] text-text-muted block font-medium">
-                  {fareEstimate.unit}
-                </span>
+
+                <div className="sm:text-right shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 sm:pl-4">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted block">
+                    Estimated Cost
+                  </span>
+                  <div className="text-xl sm:text-2xl font-display font-black text-primary tracking-tight">
+                    {fareEstimate.min} - {fareEstimate.max}
+                  </div>
+                  <span className="text-[11px] text-text-muted block font-medium">
+                    {fareEstimate.unit}
+                  </span>
+                </div>
               </div>
             </div>
 

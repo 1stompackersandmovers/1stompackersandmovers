@@ -5,13 +5,13 @@ import { Bindings } from "../types";
 
 const createLeadSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  phone: z.string().regex(/^[6-9]\d{9}$/, "Must be a valid 10-digit Indian phone number"),
+  phone: z.string().regex(/^[6-9]\d{9}$/, "Must be a valid 10-digit Indian phone number starting with 6, 7, 8, or 9"),
   movingFrom: z.string().min(2, "Origin location is required"),
   movingTo: z.string().min(2, "Destination location is required"),
   moveType: z.string().min(2, "Move type is required"),
   service: z.string().min(2, "Service type is required"),
   timeline: z.string().min(2, "Timeline is required"),
-  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  email: z.string().email("Please enter a valid email address with a domain (e.g. name@example.com)").optional().or(z.literal("")),
 });
 
 export const handleCreateLead = async (c: Context<{ Bindings: Bindings }>) => {
