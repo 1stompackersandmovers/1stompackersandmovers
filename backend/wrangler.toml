@@ -1,4 +1,4 @@
-name = "1stompackersandmovers"
+name = "api"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
 account_id = "0f6494520f3d37980a11bf7dc6aa2f3a"
@@ -15,4 +15,17 @@ ENVIRONMENT = "production"
 BREVO_SENDER_EMAIL = "hello@1stompackersandmovers.com"
 BREVO_SENDER_NAME = "1st Om Packers & Movers"
 NOTIFICATION_EMAIL = "hello@1stompackersandmovers.com"
+
+# Observability (Logs & Traces)
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true
+
 
