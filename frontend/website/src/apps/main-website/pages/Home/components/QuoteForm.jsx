@@ -14,7 +14,6 @@ import {
   Shield,
   Clock,
   AlertCircle,
-  Sparkles,
 } from "lucide-react";
 import CustomSelect from "../../../shared/components/CustomSelect";
 import Button from "../../../shared/components/Button";
@@ -913,57 +912,26 @@ const QuoteForm = ({
             </div>
 
             {/* Live Dynamic Price Range Indicator Banner */}
-            <div className="relative mt-5 sm:col-span-2 rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.04] via-surface to-primary/[0.08] p-4.5 sm:p-5 shadow-xs transition-all">
-              {/* Embedded Top Tag / Offer Badge */}
-              <div className="absolute -top-3 left-4 sm:left-6 inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold tracking-wide uppercase bg-primary text-white shadow-xs border border-white/20">
-                <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
-                <span>Instant Estimate</span>
-                <span className="text-white/40">•</span>
-                <span className="text-amber-200/95 font-semibold tracking-normal normal-case">Best Value Guarantee</span>
+            <div className="relative mt-3 sm:col-span-2 rounded-xl border border-primary/20 bg-primary/[0.02] py-2.5 px-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4">
+              {/* Embedded Top Tag */}
+              <span className="absolute -top-2.5 left-4 px-2.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
+                Live Estimate
+              </span>
+
+              <div className="flex items-center gap-2 text-xs text-text-muted pt-1 sm:pt-0 min-w-0">
+                <span className="font-semibold text-text-main shrink-0">
+                  {form.moveType || "Standard Move"}
+                </span>
+                <span className="text-border shrink-0">•</span>
+                <span className="truncate">
+                  Includes packing, loading & transit insurance
+                </span>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 sm:pt-0.5">
-                <div className="space-y-1.5 min-w-0">
-                  <div className="flex items-center flex-wrap gap-2">
-                    <span className="text-xs font-semibold text-text-main flex items-center gap-1.5">
-                      <Truck className="w-3.5 h-3.5 text-primary shrink-0" />
-                      {form.moveType || "Standard Relocation"}
-                    </span>
-                    <span className="text-[10px] sm:text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-500/20 inline-flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      All-Inclusive Package
-                    </span>
-                  </div>
-                  <p className="text-xs text-text-muted leading-relaxed">
-                    Includes 4-layer protective packaging, expert loading/unloading, dedicated closed vehicle & transit insurance.
-                  </p>
-                  <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 pt-0.5 text-[11px] text-text-muted font-medium">
-                    <span className="inline-flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
-                      Zero hidden charges
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
-                      Free survey & consultation
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
-                      On-time delivery
-                    </span>
-                  </div>
-                </div>
-
-                <div className="sm:text-right shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40 sm:pl-4">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-text-muted block">
-                    Estimated Cost
-                  </span>
-                  <div className="text-xl sm:text-2xl font-display font-black text-primary tracking-tight">
-                    {fareEstimate.min} - {fareEstimate.max}
-                  </div>
-                  <span className="text-[11px] text-text-muted block font-medium">
-                    {fareEstimate.unit}
-                  </span>
-                </div>
+              <div className="flex items-baseline gap-1.5 shrink-0">
+                <span className="text-base sm:text-lg font-bold font-display text-primary">
+                  {fareEstimate.min} – {fareEstimate.max}
+                </span>
               </div>
             </div>
 
