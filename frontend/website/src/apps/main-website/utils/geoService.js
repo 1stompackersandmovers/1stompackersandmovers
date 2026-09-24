@@ -60,8 +60,9 @@ export async function detectUserCity() {
   }
 
   try {
-    // 1. Query Cloudflare Pages Edge function
-    const res = await fetch("/api/geo", {
+    // 1. Query Cloudflare Pages / Worker Edge function
+    const apiBase = import.meta.env.VITE_API_URL || "";
+    const res = await fetch(`${apiBase}/api/geo`, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(3500),
     });
