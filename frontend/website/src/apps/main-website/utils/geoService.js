@@ -61,7 +61,12 @@ export async function detectUserCity() {
 
   try {
     // 1. Query Cloudflare Pages / Worker Edge function
-    const apiBase = import.meta.env.VITE_API_URL || "";
+    const rawBase = (import.meta.env.VITE_API_URL || "").trim();
+    const apiBase = rawBase
+      ? rawBase.startsWith("http://") || rawBase.startsWith("https://")
+        ? rawBase.replace(/\/+$/, "")
+        : `https://${rawBase.replace(/\/+$/, "")}`
+      : "";
     const res = await fetch(`${apiBase}/api/geo`, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(3500),

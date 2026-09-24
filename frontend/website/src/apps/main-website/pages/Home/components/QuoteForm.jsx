@@ -408,7 +408,12 @@ const QuoteForm = ({
     setStatus("submitting");
 
     try {
-      const apiBase = import.meta.env.VITE_API_URL || "";
+      const rawBase = (import.meta.env.VITE_API_URL || "").trim();
+      const apiBase = rawBase
+        ? rawBase.startsWith("http://") || rawBase.startsWith("https://")
+          ? rawBase.replace(/\/+$/, "")
+          : `https://${rawBase.replace(/\/+$/, "")}`
+        : "";
       const res = await fetch(`${apiBase}/api/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
