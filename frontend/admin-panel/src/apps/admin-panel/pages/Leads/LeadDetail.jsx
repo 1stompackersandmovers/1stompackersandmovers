@@ -20,6 +20,7 @@ import {
   ChevronRight,
   ExternalLink,
   Edit2,
+  Mail,
 } from "lucide-react";
 import {
   useGetLeadByIdQuery,
@@ -118,6 +119,8 @@ const LeadDetail = () => {
                       lead.name
                     )}&phone=${encodeURIComponent(
                       lead.phone
+                    )}&email=${encodeURIComponent(
+                      lead.email || ""
                     )}&from=${encodeURIComponent(
                       lead.movingFrom
                     )}&to=${encodeURIComponent(lead.movingTo)}&service=${encodeURIComponent(lead.service || "")}&moveType=${encodeURIComponent(lead.moveType || "")}&timeline=${encodeURIComponent(lead.timeline || "")}`
@@ -138,6 +141,8 @@ const LeadDetail = () => {
                     lead.name
                   )}&phone=${encodeURIComponent(
                     lead.phone
+                  )}&email=${encodeURIComponent(
+                    lead.email || ""
                   )}&from=${encodeURIComponent(
                     lead.movingFrom
                   )}&to=${encodeURIComponent(lead.movingTo)}&service=${encodeURIComponent(lead.service || "")}&moveType=${encodeURIComponent(lead.moveType || "")}&timeline=${encodeURIComponent(lead.timeline || "")}`
@@ -172,11 +177,21 @@ const LeadDetail = () => {
                 {lead.status}
               </span>
             </div>
-            <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-600">
+            <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-slate-600">
               <a href={`tel:${lead.phone}`} className="flex items-center gap-1 font-mono text-blue-600 hover:underline">
                 <Phone className="w-3.5 h-3.5" />
                 <span>+91 {lead.phone}</span>
               </a>
+              {lead.email && (
+                <a
+                  href={`mailto:${lead.email}`}
+                  className="flex items-center gap-1 text-slate-600 hover:text-blue-600 hover:underline"
+                  title={`Send email to ${lead.email}`}
+                >
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{lead.email}</span>
+                </a>
+              )}
               <a
                 href={`https://wa.me/91${lead.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
                   `Hello ${lead.name}, this is from 1st Om Packers & Movers regarding your relocation inquiry.`

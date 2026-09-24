@@ -22,6 +22,7 @@ import {
   AlertCircle,
   Sparkles,
   Loader2,
+  Mail,
 } from "lucide-react";
 import {
   useGetLeadsQuery,
@@ -112,6 +113,7 @@ const LeadsList = () => {
   const [newLeadForm, setNewLeadForm] = useState({
     name: "",
     phone: "",
+    email: "",
     movingFrom: "",
     movingTo: "",
     moveType: "Within City",
@@ -168,6 +170,7 @@ const LeadsList = () => {
       setNewLeadForm({
         name: "",
         phone: "",
+        email: "",
         movingFrom: "",
         movingTo: "",
         moveType: "Within City",
@@ -192,6 +195,7 @@ const LeadsList = () => {
     return (
       (l.name && l.name.toLowerCase().includes(q)) ||
       (l.phone && l.phone.includes(q)) ||
+      (l.email && l.email.toLowerCase().includes(q)) ||
       (l.movingFrom && l.movingFrom.toLowerCase().includes(q)) ||
       (l.movingTo && l.movingTo.toLowerCase().includes(q))
     );
@@ -413,25 +417,52 @@ const LeadsList = () => {
               className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between space-y-3.5 group"
             >
               <div>
-                {/* Header Row: Customer Name, Phone, and Status Badge */}
+                {/* Header Row: Customer Name, Phone, Email, and Status Badge */}
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h3 className="text-base font-bold text-slate-900 leading-snug truncate group-hover:text-blue-600 transition-colors">
                       {lead.name}
                     </h3>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xs text-slate-600 font-mono font-medium">{lead.phone}</span>
-                      <button
-                        onClick={() => copyToClipboard(lead.phone, lead.id)}
-                        className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer transition-colors"
-                        title="Copy phone number"
-                      >
-                        {copiedPhoneId === lead.id ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 mt-0.5">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-slate-600 font-mono font-medium">{lead.phone}</span>
+                        <button
+                          onClick={() => copyToClipboard(lead.phone, `phone-${lead.id}`)}
+                          className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer transition-colors"
+                          title="Copy phone number"
+                        >
+                          {copiedPhoneId === `phone-${lead.id}` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+
+                      {lead.email && (
+                        <div className="flex items-center gap-1 text-slate-500 min-w-0 max-w-full">
+                          <span className="text-slate-300">•</span>
+                          <a
+                            href={`mailto:${lead.email}`}
+                            className="inline-flex items-center gap-1 text-xs text-slate-600 hover:text-blue-600 hover:underline truncate max-w-[160px] sm:max-w-[190px]"
+                            title={`Email ${lead.email}`}
+                          >
+                            <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span className="truncate">{lead.email}</span>
+                          </a>
+                          <button
+                            onClick={() => copyToClipboard(lead.email, `email-${lead.id}`)}
+                            className="text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer transition-colors shrink-0"
+                            title="Copy email address"
+                          >
+                            {copiedPhoneId === `email-${lead.id}` ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="shrink-0">{getStatusBadge(lead.status)}</div>
@@ -523,6 +554,8 @@ const LeadsList = () => {
                               lead.name
                             )}&phone=${encodeURIComponent(
                               lead.phone
+                            )}&email=${encodeURIComponent(
+                              lead.email || ""
                             )}&from=${encodeURIComponent(
                               lead.movingFrom
                             )}&to=${encodeURIComponent(lead.movingTo)}&service=${encodeURIComponent(
@@ -622,6 +655,18 @@ const LeadsList = () => {
                   />
                 </FormField>
               </div>
+
+              <FormField label="Email Address (Optional)">
+                <input
+                  type="email"
+                  value={newLeadForm.email || ""}
+                  onChange={(e) =>
+                    setNewLeadForm({ ...newLeadForm, email: e.target.value })
+                  }
+                  placeholder="e.g. customer@example.com"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white text-xs"
+                />
+              </FormField>
 
               <div className="grid grid-cols-2 gap-3">
                 <FormField label="Moving From" required error={leadErrors.movingFrom}>
