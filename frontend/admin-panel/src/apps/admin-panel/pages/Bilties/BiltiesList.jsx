@@ -19,6 +19,21 @@ import { CardGridSkeleton } from "../../shared/components/Skeleton";
 const BiltiesList = () => {
   const { data: bilties = [], isLoading, isFetching, refetch: fetchBilties } =
     useGetBiltiesQuery();
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await Promise.all([
+        fetchBilties(),
+        new Promise((resolve) => setTimeout(resolve, 750)),
+      ]);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
@@ -84,12 +99,13 @@ const BiltiesList = () => {
 
         <div className="flex items-center gap-2.5">
           <button
-            onClick={fetchBilties}
-            className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 bg-slate-50 border border-slate-200/80 rounded-xl transition-all cursor-pointer text-xs font-medium"
-            title="Refresh consignment notes"
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-70"
+            title="Refresh & sync consignment notes"
+            aria-label="Refresh & sync consignment notes"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin text-blue-600" : ""}`} />
-            <span>Sync</span>
+            <RotateCcw className={`w-4 h-4 ${isSyncing || isFetching ? "animate-spin text-blue-600" : ""}`} />
           </button>
           <button
             onClick={() => navigate("/bilties/new")}
@@ -206,7 +222,7 @@ const BiltiesList = () => {
       </div>
 
       {/* Bilties Grid */}
-      {isLoading || isFetching ? (
+      {isLoading || isFetching || isSyncing ? (
         <CardGridSkeleton count={6} />
       ) : filteredBilties.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">

@@ -33,6 +33,21 @@ const FinanceDashboard = () => {
   const { data: topRoutes = [], isLoading: routesLoading } = useGetTopRoutesQuery();
   const { data: pendingPayroll = [], isLoading: payrollLoading, isFetching: payrollFetching, refetch: refetchPayroll } =
     useGetPendingPayrollQuery();
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await Promise.all([
+        refetchSummary(),
+        refetchPayroll(),
+        new Promise((resolve) => setTimeout(resolve, 750)),
+      ]);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const [updateStaffPayment, { isLoading: paying }] = useUpdateStaffPaymentMutation();
 
@@ -89,21 +104,19 @@ const FinanceDashboard = () => {
 
         <div className="flex items-center gap-2.5">
           <button
-            onClick={() => {
-              refetchSummary();
-              refetchPayroll();
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-emerald-600 bg-slate-50 border border-slate-200/80 rounded-xl transition-all cursor-pointer text-xs font-medium"
-            title="Refresh financial data"
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-70"
+            title="Refresh & sync financial accounts"
+            aria-label="Refresh & sync financial accounts"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${summaryFetching || payrollFetching ? "animate-spin text-emerald-600" : ""}`} />
-            <span>Sync Accounts</span>
+            <RotateCcw className={`w-4 h-4 ${isSyncing || summaryFetching || payrollFetching ? "animate-spin text-emerald-600" : ""}`} />
           </button>
         </div>
       </div>
 
       {/* 4 Financial KPI Cards */}
-      {summaryLoading ? (
+      {summaryLoading || isSyncing ? (
         <KpiGridSkeleton />
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
