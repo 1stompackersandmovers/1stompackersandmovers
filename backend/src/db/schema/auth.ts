@@ -11,6 +11,7 @@ export const admins = sqliteTable("admins", {
   otpCode: text("otp_code"),
   otpExpiresAt: text("otp_expires_at"),
   otpPurpose: text("otp_purpose"),
+  otpAttempts: integer("otp_attempts").default(0).notNull(),
   updatedAt: text("updated_at"),
   createdAt: text("created_at")
     .default(sql`CURRENT_TIMESTAMP`)

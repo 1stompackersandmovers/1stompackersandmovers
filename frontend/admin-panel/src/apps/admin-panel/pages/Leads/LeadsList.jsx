@@ -28,6 +28,7 @@ import {
   useCreateManualLeadMutation,
   useUpdateLeadMutation,
 } from "../../../../store/apiSlices/leadsApiSlice";
+import { useGetQuotesQuery } from "../../../../store/apiSlices/quotesApiSlice";
 import { useGetSettingsQuery } from "../../../../store/apiSlices/settingsApiSlice";
 import { FormField } from "../../../../components/FormField";
 import { CardGridSkeleton } from "../../shared/components/Skeleton";
@@ -36,7 +37,32 @@ const LeadsList = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const { data: leads = [], isLoading, isFetching, refetch: fetchLeads } =
     useGetLeadsQuery(statusFilter);
+  const { data: quotes = [], refetch: fetchQuotes } = useGetQuotesQuery();
   const [isSyncing, setIsSyncing] = useState(false);
+
+  const quoteByLeadId = React.useMemo(() => {
+    const map = {};
+    for (const q of quotes) {
+      if (q.leadId) {
+        map[q.leadId] = q;
+      }
+    }
+    return map;
+  }, [quotes]);
+
+  const findQuoteForLead = (lead) => {
+    if (quoteByLeadId[lead.id]) return quoteByLeadId[lead.id];
+    if (lead.phone) {
+      const cleanPhone = lead.phone.replace(/[^0-9]/g, "");
+      if (cleanPhone) {
+        const match = quotes.find(
+          (q) => q.customerPhone && q.customerPhone.replace(/[^0-9]/g, "") === cleanPhone
+        );
+        if (match) return match;
+      }
+    }
+    return null;
+  };
 
   const handleSync = async () => {
     if (isSyncing) return;
@@ -44,6 +70,7 @@ const LeadsList = () => {
     try {
       await Promise.all([
         fetchLeads(),
+        fetchQuotes(),
         new Promise((resolve) => setTimeout(resolve, 750)),
       ]);
     } finally {
@@ -474,24 +501,45 @@ const LeadsList = () => {
                     <span>WhatsApp</span>
                   </a>
 
-                  <button
-                    onClick={() => {
-                      navigate(
-                        `/quotes/new?leadId=${lead.id}&name=${encodeURIComponent(
-                          lead.name
-                        )}&phone=${encodeURIComponent(
-                          lead.phone
-                        )}&from=${encodeURIComponent(
-                          lead.movingFrom
-                        )}&to=${encodeURIComponent(lead.movingTo)}`
+                  {(() => {
+                    const existingQuote = findQuoteForLead(lead);
+                    if (existingQuote) {
+                      return (
+                        <button
+                          onClick={() => navigate(`/quotes/${existingQuote.id}`)}
+                          className="flex items-center justify-center gap-1.5 py-2 px-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-2xs transition-colors cursor-pointer text-center"
+                          title={`View Quotation ${existingQuote.quoteNumber}`}
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                          <span>View Quote</span>
+                        </button>
                       );
-                    }}
-                    className="flex items-center justify-center gap-1.5 py-2 px-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-2xs transition-colors cursor-pointer text-center"
-                    title="Generate quotation for this inquiry"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5" />
-                    <span>Quote</span>
-                  </button>
+                    }
+                    return (
+                      <button
+                        onClick={() => {
+                          navigate(
+                            `/quotes/new?leadId=${lead.id}&name=${encodeURIComponent(
+                              lead.name
+                            )}&phone=${encodeURIComponent(
+                              lead.phone
+                            )}&from=${encodeURIComponent(
+                              lead.movingFrom
+                            )}&to=${encodeURIComponent(lead.movingTo)}&service=${encodeURIComponent(
+                              lead.service || ""
+                            )}&moveType=${encodeURIComponent(
+                              lead.moveType || ""
+                            )}&timeline=${encodeURIComponent(lead.timeline || "")}`
+                          );
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-2 px-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-2xs transition-colors cursor-pointer text-center"
+                        title="Generate quotation for this inquiry"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                        <span>Quote</span>
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 {/* Quick Status Pill Bar */}

@@ -63,7 +63,7 @@ async function main() {
   const sql = `DELETE FROM admins WHERE username = '${username}'; INSERT INTO admins (username, password_hash, salt) VALUES ('${username}', '${hash}', '${salt}');`;
 
   const flag = isRemote ? "--remote" : "--local";
-  const cmd = `npx wrangler d1 execute DB ${flag} --command="${sql}"`;
+  const cmd = `npx wrangler d1 execute 1stompackersandmover_db ${flag} -y --command="${sql}"`;
 
   console.log(`\nExecuting on D1 Database (${flag})...`);
   try {

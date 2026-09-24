@@ -5,7 +5,16 @@ import { Bindings, AdminPayload } from "../types";
 const DEFAULT_JWT_SECRET = "1st-om-packers-secret-key-change-in-prod-2026";
 
 export const getJwtSecret = (env?: Bindings): string => {
-  return env?.JWT_SECRET || DEFAULT_JWT_SECRET;
+  const secret = env?.JWT_SECRET;
+  if (!secret) {
+    // In production, missing JWT_SECRET is a critical misconfiguration
+    if (env?.ENVIRONMENT && env.ENVIRONMENT !== "development") {
+      throw new Error("JWT_SECRET environment variable is required in production. Set it in your Cloudflare Worker secrets.");
+    }
+    // In development (or no ENVIRONMENT set), fall back to the default for ease of local testing
+    return DEFAULT_JWT_SECRET;
+  }
+  return secret;
 };
 
 export const createToken = async (payload: AdminPayload, secret: string): Promise<string> => {

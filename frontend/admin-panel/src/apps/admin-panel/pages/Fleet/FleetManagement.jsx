@@ -63,14 +63,21 @@ const FleetManagement = () => {
   const [updateVehicle, { isLoading: updating }] = useUpdateVehicleMutation();
   const [deleteVehicle] = useDeleteVehicleMutation();
 
-  const handleDeleteVehicle = async (v) => {
-    if (!window.confirm(`Are you sure you want to retire / remove vehicle ${v.vehicleNumber}?`)) {
-      return;
-    }
+  const [confirmTarget, setConfirmTarget] = useState(null); // vehicle to confirm-delete
+  const [deleteError, setDeleteError] = useState("");
+
+  const handleDeleteVehicle = (v) => {
+    setDeleteError("");
+    setConfirmTarget(v);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmTarget) return;
     try {
-      await deleteVehicle(v.id).unwrap();
+      await deleteVehicle(confirmTarget.id).unwrap();
+      setConfirmTarget(null);
     } catch (err) {
-      alert("Failed to delete vehicle: " + (err.data?.error || err.message));
+      setDeleteError(err.data?.error || err.message || "Failed to retire vehicle");
     }
   };
 
@@ -651,6 +658,41 @@ const FleetManagement = () => {
                 )}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Confirm Delete Modal */}
+      {confirmTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-rose-100 rounded-xl">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <h2 className="font-bold text-slate-800 text-base">Retire Vehicle?</h2>
+            </div>
+            <p className="text-slate-600 text-sm mb-1">
+              Are you sure you want to retire{" "}
+              <span className="font-semibold text-slate-900">{confirmTarget.vehicleNumber}</span>?
+            </p>
+            <p className="text-slate-500 text-xs mb-4">This will remove it from active fleet. This action cannot be undone.</p>
+            {deleteError && (
+              <p className="text-rose-600 text-xs bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 mb-4">{deleteError}</p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setConfirmTarget(null); setDeleteError(""); }}
+                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 text-sm bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-medium transition-colors cursor-pointer"
+              >
+                Retire Vehicle
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -58,14 +58,21 @@ const TeamManagement = () => {
   const [updateStaff, { isLoading: updating }] = useUpdateStaffMutation();
   const [deleteStaff] = useDeleteStaffMutation();
 
-  const handleDeleteStaff = async (s) => {
-    if (!window.confirm(`Are you sure you want to remove team member ${s.name}?`)) {
-      return;
-    }
+  const [confirmTarget, setConfirmTarget] = useState(null); // staff member to confirm-delete
+  const [deleteError, setDeleteError] = useState("");
+
+  const handleDeleteStaff = (s) => {
+    setDeleteError("");
+    setConfirmTarget(s);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmTarget) return;
     try {
-      await deleteStaff(s.id).unwrap();
+      await deleteStaff(confirmTarget.id).unwrap();
+      setConfirmTarget(null);
     } catch (err) {
-      alert("Failed to delete team member: " + (err.data?.error || err.message));
+      setDeleteError(err.data?.error || err.message || "Failed to remove team member");
     }
   };
 
@@ -581,6 +588,41 @@ const TeamManagement = () => {
                 )}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Confirm Delete Modal */}
+      {confirmTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-rose-100 rounded-xl">
+                <UserX className="w-5 h-5 text-rose-600" />
+              </div>
+              <h2 className="font-bold text-slate-800 text-base">Remove Team Member?</h2>
+            </div>
+            <p className="text-slate-600 text-sm mb-1">
+              Are you sure you want to mark{" "}
+              <span className="font-semibold text-slate-900">{confirmTarget.name}</span> as inactive?
+            </p>
+            <p className="text-slate-500 text-xs mb-4">They will be removed from active assignments. Their records will be retained.</p>
+            {deleteError && (
+              <p className="text-rose-600 text-xs bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 mb-4">{deleteError}</p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setConfirmTarget(null); setDeleteError(""); }}
+                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 text-sm bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-medium transition-colors cursor-pointer"
+              >
+                Remove Member
+              </button>
+            </div>
           </div>
         </div>
       )}

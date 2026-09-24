@@ -1,5 +1,20 @@
 import { NewLead } from "../db/schema/leads";
 
+function escapeHtml(str?: string | null): string {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function sanitizeHeader(str?: string | null): string {
+  if (!str) return "";
+  return String(str).replace(/[\r\n]+/g, " ").trim();
+}
+
 export const sendLeadNotificationEmail = async (
   lead: NewLead,
   apiKey?: string,
@@ -10,21 +25,25 @@ export const sendLeadNotificationEmail = async (
     return false;
   }
 
+  const safeName = sanitizeHeader(lead.name);
+  const safeFrom = sanitizeHeader(lead.movingFrom);
+  const safeTo = sanitizeHeader(lead.movingTo);
+
   const payload = {
     sender: { name: "1st Om Packers System", email: "alerts@1stompackersandmovers.com" },
     to: [{ email: recipientEmail }],
-    subject: `New Moving Inquiry: ${lead.name} (${lead.movingFrom} to ${lead.movingTo})`,
+    subject: `New Moving Inquiry: ${safeName} (${safeFrom} to ${safeTo})`,
     htmlContent: `
       <h2>New Relocation Request Received</h2>
-      <p><strong>Customer Name:</strong> ${lead.name}</p>
-      <p><strong>Phone:</strong> <a href="tel:${lead.phone}">${lead.phone}</a></p>
-      <p><strong>Email:</strong> ${lead.email || "Not provided"}</p>
+      <p><strong>Customer Name:</strong> ${escapeHtml(lead.name)}</p>
+      <p><strong>Phone:</strong> <a href="tel:${encodeURIComponent(lead.phone)}">${escapeHtml(lead.phone)}</a></p>
+      <p><strong>Email:</strong> ${escapeHtml(lead.email || "Not provided")}</p>
       <hr/>
-      <p><strong>Moving From:</strong> ${lead.movingFrom}</p>
-      <p><strong>Moving To:</strong> ${lead.movingTo}</p>
-      <p><strong>Move Type:</strong> ${lead.moveType}</p>
-      <p><strong>Service Requested:</strong> ${lead.service}</p>
-      <p><strong>Preferred Timeline:</strong> ${lead.timeline}</p>
+      <p><strong>Moving From:</strong> ${escapeHtml(lead.movingFrom)}</p>
+      <p><strong>Moving To:</strong> ${escapeHtml(lead.movingTo)}</p>
+      <p><strong>Move Type:</strong> ${escapeHtml(lead.moveType)}</p>
+      <p><strong>Service Requested:</strong> ${escapeHtml(lead.service)}</p>
+      <p><strong>Preferred Timeline:</strong> ${escapeHtml(lead.timeline)}</p>
     `,
   };
 
@@ -58,16 +77,12 @@ export const sendOtpEmail = async (
   senderEmail?: string,
   senderName?: string
 ): Promise<boolean> => {
-  console.log(`\n========================================`);
-  console.log(`🔐 Brevo OTP Dispatch`);
-  console.log(`To: ${recipientEmail}`);
-  console.log(`Purpose: ${purpose}`);
-  console.log(`OTP Code: >>> ${otpCode} <<<`);
-  console.log(`========================================\n`);
-
+  // NOTE: OTP is intentionally NOT logged to prevent exposure in production logs.
+  // In local dev without BREVO_API_KEY, the email is skipped but the OTP is still
+  // stored in the DB; use the /auth/verify-2fa endpoint to verify it.
   if (!apiKey) {
     console.warn(
-      "⚠️ BREVO_API_KEY is not set in backend/.dev.vars. For local testing, OTP has been logged to console above. To enable real Brevo delivery, add BREVO_API_KEY to backend/.dev.vars"
+      "⚠️ BREVO_API_KEY is not set. OTP email skipped. To enable real Brevo delivery, add BREVO_API_KEY to backend/.dev.vars"
     );
     return true; // Return true so flow continues seamlessly in local development
   }
@@ -75,7 +90,11 @@ export const sendOtpEmail = async (
   const fromEmail = senderEmail || "1stompackersandmovers@gmail.com";
   const fromName = senderName || "1st Om Packers Security";
 
-  const subject = `[1st Om P&M Security] ${otpCode} is your ${purpose} code`;
+  const safePurposeHeader = sanitizeHeader(purpose);
+  const safePurposeHtml = escapeHtml(purpose);
+  const safeOtp = sanitizeHeader(otpCode);
+
+  const subject = `[1st Om P&M Security] ${safeOtp} is your ${safePurposeHeader} code`;
   const htmlContent = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
       <div style="text-align: center; margin-bottom: 24px;">
@@ -84,9 +103,9 @@ export const sendOtpEmail = async (
       </div>
 
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
-        <p style="color: #475569; font-size: 14px; margin: 0 0 12px 0;">Use the following one-time code for <strong>${purpose}</strong>:</p>
+        <p style="color: #475569; font-size: 14px; margin: 0 0 12px 0;">Use the following one-time code for <strong>${safePurposeHtml}</strong>:</p>
         <div style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #2563eb; padding: 12px 16px; background: #ffffff; border: 2px dashed #93c5fd; border-radius: 8px; display: inline-block; margin: 8px 0;">
-          ${otpCode}
+          ${escapeHtml(safeOtp)}
         </div>
         <p style="color: #94a3b8; font-size: 12px; margin: 12px 0 0 0;">This code is valid for <strong>10 minutes</strong>. Do not share it with anyone.</p>
       </div>

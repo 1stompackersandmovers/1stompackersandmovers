@@ -1,4 +1,4 @@
-import { Context } from "hono";
+﻿import { Context } from "hono";
 import { z } from "zod";
 import { verify, sign } from "hono/jwt";
 import {
@@ -72,6 +72,13 @@ import { createToken, getJwtSecret } from "../middlewares/auth";
 import { verifyPassword } from "../utils/crypto";
 import { sendOtpEmail } from "../services/email.service";
 import { Bindings, AdminPayload } from "../types";
+
+/** Parse a route :id param to a positive integer. Returns null if invalid. */
+const parseId = (raw: string | undefined): number | null => {
+  if (!raw) return null;
+  const n = parseInt(raw, 10);
+  return isNaN(n) || n <= 0 ? null : n;
+};
 
 function maskEmail(email?: string | null): string {
   if (!email || !email.includes("@")) return "registered email";
@@ -463,8 +470,8 @@ export const handleGetLeads = async (c: Context<{ Bindings: Bindings }>) => {
 
 export const handleUpdateLead = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
-    if (isNaN(id)) return c.json({ error: "Invalid lead ID" }, 400);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid lead ID" }, 400);
 
     const body = await c.req.json();
     const updated = await updateLeadStatusAndNotes(c.env, id, body);
@@ -528,7 +535,8 @@ export const handleGetQuotations = async (c: Context<{ Bindings: Bindings }>) =>
 
 export const handleGetQuotationById = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid quotation ID" }, 400);
     const quote = await getQuotationById(c.env, id);
     if (!quote) return c.json({ error: "Quotation not found" }, 404);
     return c.json({ quote });
@@ -539,8 +547,13 @@ export const handleGetQuotationById = async (c: Context<{ Bindings: Bindings }>)
 
 export const handleUpdateQuotationStatus = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid quotation ID" }, 400);
     const { status } = await c.req.json();
+    const allowed = ["draft", "sent", "accepted", "rejected"];
+    if (!status || !allowed.includes(status)) {
+      return c.json({ error: `Invalid status. Must be one of: ${allowed.join(", ")}` }, 400);
+    }
     const updated = await updateQuotationStatus(c.env, id, status);
     return c.json({ success: true, quote: updated });
   } catch (err) {
@@ -550,7 +563,8 @@ export const handleUpdateQuotationStatus = async (c: Context<{ Bindings: Binding
 
 export const handleUpdateQuotation = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid quotation ID" }, 400);
     const body = await c.req.json();
     const updated = await updateQuotation(c.env, id, body);
     if (!updated) return c.json({ error: "Quotation not found" }, 404);
@@ -563,7 +577,14 @@ export const handleUpdateQuotation = async (c: Context<{ Bindings: Bindings }>) 
 
 export const handleDeleteQuotation = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid quotation ID" }, 400);
+    // Guard: don't allow deleting a quote that's already accepted (job may exist)
+    const existing = await getQuotationById(c.env, id);
+    if (!existing) return c.json({ error: "Quotation not found" }, 404);
+    if (existing.status === "accepted") {
+      return c.json({ error: "Cannot delete an accepted quotation. A job may already be linked to it." }, 409);
+    }
     await deleteQuotation(c.env, id);
     return c.json({ success: true });
   } catch (err) {
@@ -599,7 +620,8 @@ export const handleGetJobs = async (c: Context<{ Bindings: Bindings }>) => {
 
 export const handleGetJobById = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid job ID" }, 400);
     const job = await getJobById(c.env, id);
     if (!job) return c.json({ error: "Job not found" }, 404);
     return c.json({ job });
@@ -610,9 +632,20 @@ export const handleGetJobById = async (c: Context<{ Bindings: Bindings }>) => {
 
 export const handleUpdateJob = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid job ID" }, 400);
     const body = await c.req.json();
-    const updated = await updateJob(c.env, id, body);
+    // Whitelist allowed job update fields to prevent mass-assignment
+    const allowedFields = [
+      "customerName", "customerPhone", "pickupAddress", "deliveryAddress",
+      "scheduledDate", "scheduledTime", "vehicleAssigned", "driverName",
+      "driverPhone", "crewMembers", "specialNotes", "status",
+    ];
+    const safeUpdate: Record<string, unknown> = {};
+    for (const key of allowedFields) {
+      if (body[key] !== undefined) safeUpdate[key] = body[key];
+    }
+    const updated = await updateJob(c.env, id, safeUpdate as never);
     return c.json({ success: true, job: updated });
   } catch (err) {
     return c.json({ error: "Failed to update job" }, 500);
@@ -626,6 +659,9 @@ export const handleCreateInvoice = async (c: Context<{ Bindings: Bindings }>) =>
     const body = await c.req.json();
     if (!body.customerName || !body.customerPhone || body.totalAmount === undefined) {
       return c.json({ error: "Customer details and total amount are required." }, 400);
+    }
+    if (isNaN(Number(body.totalAmount)) || Number(body.totalAmount) < 0) {
+      return c.json({ error: "totalAmount must be a non-negative number" }, 400);
     }
     const invoice = await createInvoice(c.env, body);
     return c.json({ success: true, invoice }, 201);
@@ -646,7 +682,8 @@ export const handleGetInvoices = async (c: Context<{ Bindings: Bindings }>) => {
 
 export const handleGetInvoiceById = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid invoice ID" }, 400);
     const invoice = await getInvoiceById(c.env, id);
     if (!invoice) return c.json({ error: "Invoice not found" }, 404);
     return c.json({ invoice });
@@ -657,8 +694,12 @@ export const handleGetInvoiceById = async (c: Context<{ Bindings: Bindings }>) =
 
 export const handleUpdateInvoicePayment = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid invoice ID" }, 400);
     const body = await c.req.json();
+    if (body.advancePaid !== undefined && (isNaN(Number(body.advancePaid)) || Number(body.advancePaid) < 0)) {
+      return c.json({ error: "advancePaid must be a non-negative number" }, 400);
+    }
     const updated = await updateInvoicePayment(c.env, id, body);
     return c.json({ success: true, invoice: updated });
   } catch (err) {
@@ -693,7 +734,8 @@ export const handleGetBilties = async (c: Context<{ Bindings: Bindings }>) => {
 
 export const handleGetBiltyById = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid bilty ID" }, 400);
     const bilty = await getBiltyById(c.env, id);
     if (!bilty) return c.json({ error: "Bilty not found" }, 404);
     return c.json({ bilty });
@@ -717,6 +759,9 @@ export const handleGetSettings = async (c: Context<{ Bindings: Bindings }>) => {
 export const handleUpdateSettings = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const body = await c.req.json();
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      return c.json({ error: "Settings must be a valid JSON object" }, 400);
+    }
     const updated = await updateCompanySettings(c.env, body);
     return c.json({ success: true, settings: updated });
   } catch (err: any) {
@@ -729,7 +774,8 @@ export const handleUpdateSettings = async (c: Context<{ Bindings: Bindings }>) =
 
 export const handleGetLeadById = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid lead ID" }, 400);
     const lead = await getLeadById(c.env, id);
     if (!lead) return c.json({ error: "Lead not found" }, 404);
     return c.json({ lead });
@@ -740,7 +786,8 @@ export const handleGetLeadById = async (c: Context<{ Bindings: Bindings }>) => {
 
 export const handleGetLeadPipeline = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid lead ID" }, 400);
     const pipeline = await getLeadPipeline(c.env, id);
     if (!pipeline) return c.json({ error: "Lead not found" }, 404);
     return c.json(pipeline);
@@ -764,7 +811,8 @@ export const handleGetVehicles = async (c: Context<{ Bindings: Bindings }>) => {
 
 export const handleGetVehicleById = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid vehicle ID" }, 400);
     const vehicle = await getVehicleById(c.env, id);
     if (!vehicle) return c.json({ error: "Vehicle not found" }, 404);
     return c.json({ vehicle });
@@ -788,7 +836,8 @@ export const handleCreateVehicle = async (c: Context<{ Bindings: Bindings }>) =>
 
 export const handleUpdateVehicle = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid vehicle ID" }, 400);
     const body = await c.req.json();
     const vehicle = await updateVehicle(c.env, id, body);
     return c.json({ success: true, vehicle });
@@ -799,7 +848,8 @@ export const handleUpdateVehicle = async (c: Context<{ Bindings: Bindings }>) =>
 
 export const handleDeleteVehicle = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid vehicle ID" }, 400);
     const vehicle = await deleteVehicle(c.env, id);
     return c.json({ success: true, vehicle });
   } catch (err) {
@@ -823,7 +873,8 @@ export const handleGetStaff = async (c: Context<{ Bindings: Bindings }>) => {
 
 export const handleGetStaffById = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid staff ID" }, 400);
     const member = await getStaffById(c.env, id);
     if (!member) return c.json({ error: "Staff member not found" }, 404);
     return c.json({ staff: member });
@@ -847,7 +898,8 @@ export const handleCreateStaff = async (c: Context<{ Bindings: Bindings }>) => {
 
 export const handleUpdateStaff = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid staff ID" }, 400);
     const body = await c.req.json();
     const member = await updateStaff(c.env, id, body);
     return c.json({ success: true, staff: member });
@@ -858,7 +910,8 @@ export const handleUpdateStaff = async (c: Context<{ Bindings: Bindings }>) => {
 
 export const handleDeleteStaff = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const id = parseInt(c.req.param("id") ?? "", 10);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "Invalid staff ID" }, 400);
     const member = await deleteStaff(c.env, id);
     return c.json({ success: true, staff: member });
   } catch (err) {
@@ -870,7 +923,8 @@ export const handleDeleteStaff = async (c: Context<{ Bindings: Bindings }>) => {
 
 export const handleGetJobResources = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const jobId = parseId(c.req.param("id"));
+    if (!jobId) return c.json({ error: "Invalid job ID" }, 400);
     const resources = await getJobResources(c.env, jobId);
     return c.json(resources);
   } catch (err) {
@@ -880,8 +934,9 @@ export const handleGetJobResources = async (c: Context<{ Bindings: Bindings }>) 
 
 export const handleAssignVehiclesToJob = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const jobId = parseInt(c.req.param("id") ?? "", 10);
-    const body = await c.req.json(); // array of { vehicleId, driverName, driverPhone, role }
+    const jobId = parseId(c.req.param("id"));
+    if (!jobId) return c.json({ error: "Invalid job ID" }, 400);
+    const body = await c.req.json();
     const vehiclesList = Array.isArray(body) ? body : body.vehicles || [];
     const resources = await assignVehiclesToJob(c.env, jobId, vehiclesList);
     return c.json({ success: true, ...resources });
@@ -892,8 +947,9 @@ export const handleAssignVehiclesToJob = async (c: Context<{ Bindings: Bindings 
 
 export const handleRemoveVehicleFromJob = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const jobId = parseInt(c.req.param("id") ?? "", 10);
-    const vehicleId = parseInt(c.req.param("vehicleId") ?? "", 10);
+    const jobId = parseId(c.req.param("id"));
+    const vehicleId = parseId(c.req.param("vehicleId"));
+    if (!jobId || !vehicleId) return c.json({ error: "Invalid job or vehicle ID" }, 400);
     const resources = await removeVehicleFromJob(c.env, jobId, vehicleId);
     return c.json({ success: true, ...resources });
   } catch (err) {
@@ -903,8 +959,9 @@ export const handleRemoveVehicleFromJob = async (c: Context<{ Bindings: Bindings
 
 export const handleAssignStaffToJob = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const jobId = parseInt(c.req.param("id") ?? "", 10);
-    const body = await c.req.json(); // array of { staffId, roleOnJob, payType, rateUsed, daysWorked }
+    const jobId = parseId(c.req.param("id"));
+    if (!jobId) return c.json({ error: "Invalid job ID" }, 400);
+    const body = await c.req.json();
     const staffList = Array.isArray(body) ? body : body.staff || [];
     const resources = await assignStaffToJob(c.env, jobId, staffList);
     return c.json({ success: true, ...resources });
@@ -915,8 +972,9 @@ export const handleAssignStaffToJob = async (c: Context<{ Bindings: Bindings }>)
 
 export const handleRemoveStaffFromJob = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const jobId = parseInt(c.req.param("id") ?? "", 10);
-    const staffId = parseInt(c.req.param("staffId") ?? "", 10);
+    const jobId = parseId(c.req.param("id"));
+    const staffId = parseId(c.req.param("staffId"));
+    if (!jobId || !staffId) return c.json({ error: "Invalid job or staff ID" }, 400);
     const resources = await removeStaffFromJob(c.env, jobId, staffId);
     return c.json({ success: true, ...resources });
   } catch (err) {
@@ -926,8 +984,9 @@ export const handleRemoveStaffFromJob = async (c: Context<{ Bindings: Bindings }
 
 export const handleUpdateStaffPayment = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const jobId = parseInt(c.req.param("id") ?? "", 10);
-    const staffId = parseInt(c.req.param("staffId") ?? "", 10);
+    const jobId = parseId(c.req.param("id"));
+    const staffId = parseId(c.req.param("staffId"));
+    if (!jobId || !staffId) return c.json({ error: "Invalid job or staff ID" }, 400);
     const body = await c.req.json();
     const updated = await updateStaffJobPayment(c.env, jobId, staffId, body);
     return c.json({ success: true, record: updated });
@@ -938,10 +997,14 @@ export const handleUpdateStaffPayment = async (c: Context<{ Bindings: Bindings }
 
 export const handleAddJobExpense = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const jobId = parseId(c.req.param("id"));
+    if (!jobId) return c.json({ error: "Invalid job ID" }, 400);
     const body = await c.req.json();
     if (!body.category || body.amount === undefined) {
       return c.json({ error: "Category and amount are required" }, 400);
+    }
+    if (isNaN(Number(body.amount)) || Number(body.amount) < 0) {
+      return c.json({ error: "Expense amount must be a non-negative number" }, 400);
     }
     const expense = await addJobExpense(c.env, jobId, body);
     return c.json({ success: true, expense }, 201);
@@ -952,8 +1015,9 @@ export const handleAddJobExpense = async (c: Context<{ Bindings: Bindings }>) =>
 
 export const handleDeleteJobExpense = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const jobId = parseInt(c.req.param("id") ?? "", 10);
-    const expenseId = parseInt(c.req.param("expenseId") ?? "", 10);
+    const jobId = parseId(c.req.param("id"));
+    const expenseId = parseId(c.req.param("expenseId"));
+    if (!jobId || !expenseId) return c.json({ error: "Invalid job or expense ID" }, 400);
     await deleteJobExpense(c.env, jobId, expenseId);
     return c.json({ success: true });
   } catch (err) {
@@ -963,7 +1027,8 @@ export const handleDeleteJobExpense = async (c: Context<{ Bindings: Bindings }>)
 
 export const handleGetJobProfitSummary = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const jobId = parseInt(c.req.param("id") ?? "", 10);
+    const jobId = parseId(c.req.param("id"));
+    if (!jobId) return c.json({ error: "Invalid job ID" }, 400);
     const profit = await getJobProfitSummary(c.env, jobId);
     return c.json(profit);
   } catch (err) {
@@ -975,10 +1040,18 @@ export const handleGetJobProfitSummary = async (c: Context<{ Bindings: Bindings 
 
 export const handleRecordInvoicePayment = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const invoiceId = parseInt(c.req.param("id") ?? "", 10);
+    const invoiceId = parseId(c.req.param("id"));
+    if (!invoiceId) return c.json({ error: "Invalid invoice ID" }, 400);
     const body = await c.req.json();
     if (!body.amount || !body.paymentMode || !body.paymentDate) {
       return c.json({ error: "Amount, paymentMode, and paymentDate are required" }, 400);
+    }
+    if (isNaN(Number(body.amount)) || Number(body.amount) <= 0) {
+      return c.json({ error: "Payment amount must be a positive number" }, 400);
+    }
+    const validModes = ["upi", "cash", "neft", "cheque", "other"];
+    if (!validModes.includes(body.paymentMode)) {
+      return c.json({ error: `paymentMode must be one of: ${validModes.join(", ")}` }, 400);
     }
     const result = await recordInvoicePayment(c.env, invoiceId, body);
     return c.json({ success: true, ...result }, 201);
@@ -989,7 +1062,8 @@ export const handleRecordInvoicePayment = async (c: Context<{ Bindings: Bindings
 
 export const handleGetInvoicePayments = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const invoiceId = parseInt(c.req.param("id") ?? "", 10);
+    const invoiceId = parseId(c.req.param("id"));
+    if (!invoiceId) return c.json({ error: "Invalid invoice ID" }, 400);
     const payments = await getInvoicePayments(c.env, invoiceId);
     return c.json({ payments });
   } catch (err) {

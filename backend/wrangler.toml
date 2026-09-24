@@ -1,16 +1,18 @@
 name = "1stompackersandmovers"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
+account_id = "0f6494520f3d37980a11bf7dc6aa2f3a"
 
-# D1 Database binding
+# D1 Database binding: connects remote Cloudflare D1 to env.DB in your Worker code
 [[d1_databases]]
 binding = "DB"
-database_name = "first_om_packers_db"
-database_id = "local-d1-db"
+database_name = "1stompackersandmover_db"
+database_id = "72e9a7e0-4549-4642-99be-0f7e25fffbd6"
 
-# Environment variables
+# Public environment variables (non-sensitive)
 [vars]
-ENVIRONMENT = "development"
-# BREVO_API_KEY = ""
-# NOTIFICATION_EMAIL = ""
-# TURNSTILE_SECRET_KEY = ""
+ENVIRONMENT = "production"
+BREVO_SENDER_EMAIL = "hello@1stompackersandmovers.com"
+BREVO_SENDER_NAME = "1st Om Packers & Movers"
+NOTIFICATION_EMAIL = "hello@1stompackersandmovers.com"
+

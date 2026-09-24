@@ -1,7 +1,7 @@
 import { eq, desc, or } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { admins, quotations, jobs, invoices, bilties, leads, companySettings } from "../db/schema";
-import { hashPassword, verifyPassword } from "../utils/crypto";
+import { hashPassword, verifyPassword, timingSafeEqual } from "../utils/crypto";
 import { releaseJobResources } from "./operations.service";
 import { Bindings } from "../types";
 
@@ -27,6 +27,9 @@ export const ensureAdminColumns = async (env: Bindings) => {
     }
     if (!existingColumns.has("otp_purpose")) {
       await db.prepare("ALTER TABLE admins ADD COLUMN otp_purpose TEXT").run();
+    }
+    if (!existingColumns.has("otp_attempts")) {
+      await db.prepare("ALTER TABLE admins ADD COLUMN otp_attempts INTEGER DEFAULT 0 NOT NULL").run();
     }
     if (!existingColumns.has("updated_at")) {
       await db.prepare("ALTER TABLE admins ADD COLUMN updated_at TEXT").run();
@@ -180,8 +183,10 @@ export const generateAndStoreOtp = async (
 ): Promise<string> => {
   await ensureAdminColumns(env);
   const db = getDb(env.DB);
-  // Generate random 6-digit numeric OTP code (100000 - 999999)
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // Generate cryptographically secure 6-digit numeric OTP code
+  const randomBuffer = new Uint32Array(1);
+  crypto.getRandomValues(randomBuffer);
+  const otp = (100000 + (randomBuffer[0] % 900000)).toString();
   // Valid for 10 minutes
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
@@ -191,6 +196,7 @@ export const generateAndStoreOtp = async (
       otpCode: otp,
       otpExpiresAt: expiresAt,
       otpPurpose: purpose,
+      otpAttempts: 0,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(admins.id, adminId));
@@ -217,8 +223,52 @@ export const verifyAdminOtp = async (
   const expiry = new Date(admin.otpExpiresAt);
   if (now > expiry) return false;
 
-  // Check code equality
-  if (admin.otpCode.trim() !== otpInput.trim()) return false;
+  // Check maximum attempt threshold (5 attempts maximum)
+  const currentAttempts = admin.otpAttempts || 0;
+  if (currentAttempts >= 5) {
+    // Invalidate OTP immediately due to excessive failed attempts
+    await db
+      .update(admins)
+      .set({
+        otpCode: null,
+        otpExpiresAt: null,
+        otpPurpose: null,
+        otpAttempts: 0,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(admins.id, adminId));
+    return false;
+  }
+
+  // Constant-time timing-safe comparison to prevent timing attacks
+  const isValid = timingSafeEqual(admin.otpCode.trim(), (otpInput || "").trim());
+
+  if (!isValid) {
+    // Increment failed attempts
+    const nextAttempts = currentAttempts + 1;
+    if (nextAttempts >= 5) {
+      // Lock out this OTP session
+      await db
+        .update(admins)
+        .set({
+          otpCode: null,
+          otpExpiresAt: null,
+          otpPurpose: null,
+          otpAttempts: 0,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(admins.id, adminId));
+    } else {
+      await db
+        .update(admins)
+        .set({
+          otpAttempts: nextAttempts,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(admins.id, adminId));
+    }
+    return false;
+  }
 
   // Clear OTP on successful validation
   await db
@@ -227,6 +277,7 @@ export const verifyAdminOtp = async (
       otpCode: null,
       otpExpiresAt: null,
       otpPurpose: null,
+      otpAttempts: 0,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(admins.id, adminId));
@@ -410,6 +461,14 @@ export const updateQuotationStatus = async (
     .set({ status })
     .where(eq(quotations.id, id))
     .returning();
+
+  if (status === "accepted" && updated[0]?.leadId) {
+    await db
+      .update(leads)
+      .set({ status: "converted" })
+      .where(eq(leads.id, updated[0].leadId));
+  }
+
   return updated[0];
 };
 
@@ -583,13 +642,22 @@ export const createInvoice = async (
 
 export const getAllInvoices = async (env: Bindings) => {
   const db = getDb(env.DB);
-  return await db.select().from(invoices).orderBy(desc(invoices.createdAt));
+  const list = await db.select().from(invoices).orderBy(desc(invoices.createdAt));
+  return list.map((inv) => ({
+    ...inv,
+    paidAmount: Math.max(0, (Number(inv.totalAmount) || 0) - (Number(inv.balanceDue) || 0)),
+  }));
 };
 
 export const getInvoiceById = async (env: Bindings, id: number) => {
   const db = getDb(env.DB);
   const result = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
-  return result[0] || null;
+  if (!result[0]) return null;
+  const inv = result[0];
+  return {
+    ...inv,
+    paidAmount: Math.max(0, (Number(inv.totalAmount) || 0) - (Number(inv.balanceDue) || 0)),
+  };
 };
 
 export const updateInvoicePayment = async (
@@ -617,7 +685,10 @@ export const updateInvoicePayment = async (
     .where(eq(invoices.id, id))
     .returning();
 
-  return updated[0];
+  return {
+    ...updated[0],
+    paidAmount: advance,
+  };
 };
 
 // ================= BILTIES (LR) ================= //

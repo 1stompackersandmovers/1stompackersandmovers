@@ -73,9 +73,9 @@ const InvoicesList = () => {
 
   // KPI Calculations
   const totalInvoices = invoices.length;
-  const totalInvoicedAmount = invoices.reduce((acc, inv) => acc + (inv.totalAmount || 0), 0);
-  const totalCollectedAmount = invoices.reduce((acc, inv) => acc + (inv.paidAmount || 0), 0);
-  const totalPendingAmount = Math.max(0, totalInvoicedAmount - totalCollectedAmount);
+  const totalInvoicedAmount = invoices.reduce((acc, inv) => acc + (Number(inv.totalAmount) || 0), 0);
+  const totalPendingAmount = invoices.reduce((acc, inv) => acc + (Number(inv.balanceDue) || 0), 0);
+  const totalCollectedAmount = Math.max(0, totalInvoicedAmount - totalPendingAmount);
 
   const paidCount = invoices.filter((inv) => inv.paymentStatus === "paid").length;
   const unpaidCount = invoices.filter((inv) => inv.paymentStatus === "unpaid").length;
@@ -311,14 +311,26 @@ const InvoicesList = () => {
                   </div>
                 </div>
 
-                <div className="mt-3 bg-slate-50/80 border border-slate-100 rounded-xl p-3 text-xs text-slate-700 space-y-1">
-                  <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                    <span>Paid: ₹{Number(inv.paidAmount || 0).toLocaleString("en-IN")}</span>
-                    <span className="font-semibold text-rose-600">
-                      Due: ₹{Math.max(0, (inv.totalAmount || 0) - (inv.paidAmount || 0)).toLocaleString("en-IN")}
-                    </span>
-                  </div>
-                </div>
+                {(() => {
+                  const paid = Number(
+                    inv.paidAmount !== undefined
+                      ? inv.paidAmount
+                      : Math.max(0, (Number(inv.totalAmount) || 0) - (Number(inv.balanceDue) || 0))
+                  );
+                  const due = Number(inv.balanceDue !== undefined ? inv.balanceDue : Math.max(0, (Number(inv.totalAmount) || 0) - paid));
+                  return (
+                    <div className="mt-3 bg-slate-50/80 border border-slate-100 rounded-xl p-3 text-xs text-slate-700 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-slate-600">
+                        <span>
+                          Paid: <strong className="text-emerald-700 font-mono">₹{paid.toLocaleString("en-IN")}</strong>
+                        </span>
+                        <span className={due > 0 ? "font-semibold text-rose-600 font-mono" : "font-medium text-slate-500 font-mono"}>
+                          Due: ₹{due.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 text-xs text-slate-500">

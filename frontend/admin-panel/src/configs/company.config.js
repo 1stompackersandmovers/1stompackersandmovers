@@ -30,11 +30,11 @@ export const companyConfig = {
   // Business & Tax Compliance
   legal: {
     legalName: "1st Om Packers and Movers",
-    gstin: "20XXXXX0000X1Z5",
-    pan: "XXXXX0000X",
+    gstin: "",
+    pan: "",
   },
-  gstin: "20XXXXX0000X1Z5", // Customizable with client's actual GSTIN
-  pan: "XXXXX0000X",
+  gstin: "", // Customizable with client's actual registered GSTIN
+  pan: "",
   sacCode: "9965", // Goods Transport Agency / Road freight
 
   // Addresses
@@ -55,8 +55,8 @@ export const companyConfig = {
   bankDetails: {
     accountName: "1ST OM PACKERS AND MOVERS",
     bankName: "State Bank of India",
-    accountNumber: "000000000000",
-    ifsc: "SBIN0000000",
+    accountNumber: "",
+    ifsc: "",
     branch: "Patna Main",
     upiId: "1stompackers@sbi",
   },

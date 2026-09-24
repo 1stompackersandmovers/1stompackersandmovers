@@ -10,7 +10,24 @@ const app = new Hono<{ Bindings: Bindings }>();
 app.use(
   "*",
   cors({
-    origin: (origin) => origin || "*",
+    origin: (origin, c) => {
+      const env = c.env as Bindings;
+      const allowedOrigins = [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "https://admin.1stompackersandmovers.com",
+        "https://1stompackersandmovers.com",
+        "https://www.1stompackersandmovers.com",
+      ];
+      // In development or if no origin (server-to-server / curl), be permissive
+      if (!origin || env?.ENVIRONMENT === "development") return origin || "*";
+      // Allow production domains and any Cloudflare Pages deployments (*.pages.dev)
+      if (allowedOrigins.includes(origin) || origin.endsWith(".pages.dev")) {
+        return origin;
+      }
+      return null;
+    },
     allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
   })

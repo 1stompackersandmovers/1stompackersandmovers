@@ -17,7 +17,13 @@ import {
   Loader2,
   Edit2,
   Trash2,
+  XCircle,
+  RotateCcw,
+  Mail,
+  Globe,
+  Download,
 } from "lucide-react";
+import { companyConfig } from "../../../../configs/company.config";
 import {
   useGetQuoteByIdQuery,
   useUpdateQuoteStatusMutation,
@@ -35,7 +41,26 @@ const QuoteDetail = () => {
 
   const { data: quote, isLoading: loading } = useGetQuoteByIdQuery(id);
   const { data: dbSettings } = useGetSettingsQuery();
-  const company = dbSettings || {};
+  const company = {
+    ...companyConfig,
+    ...(dbSettings || {}),
+    headOffice: {
+      ...companyConfig.headOffice,
+      ...(dbSettings?.headOffice || {}),
+    },
+    bankDetails: {
+      ...companyConfig.bankDetails,
+      ...(dbSettings?.bankDetails || {}),
+    },
+  };
+
+  const isRealGstin = company.gstin && !company.gstin.includes("XXXXX");
+  const isRealPan = company.pan && !company.pan.includes("XXXXX");
+  const isRealAccount =
+    company.bankDetails?.accountNumber &&
+    company.bankDetails?.accountNumber !== "000000000000" &&
+    !company.bankDetails?.accountNumber.includes("00000");
+
   const [updateQuoteStatus] = useUpdateQuoteStatusMutation();
   const [deleteQuote, { isLoading: deleting }] = useDeleteQuoteMutation();
   const [createJob, { isLoading: converting }] = useCreateJobMutation();
@@ -53,15 +78,26 @@ const QuoteDetail = () => {
     }
   };
 
-  const handleDeleteQuote = async () => {
-    if (!window.confirm(`Are you sure you want to permanently delete quotation ${quote.quoteNumber}?`)) {
-      return;
-    }
+  const handleDownloadPdf = () => {
+    const prevTitle = document.title;
+    document.title = `Quotation-${quote?.quoteNumber || "Quote"}-${(quote?.customerName || "Customer").replace(/[^a-zA-Z0-9]/g, "-")}`;
+    window.print();
+    setTimeout(() => {
+      document.title = prevTitle;
+    }, 1000);
+  };
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const handleConfirmDelete = async () => {
     try {
+      setDeleteError("");
       await deleteQuote(id).unwrap();
+      setIsDeleteModalOpen(false);
       navigate(quote.leadId ? `/leads/${quote.leadId}` : "/quotes");
     } catch (err) {
-      alert("Failed to delete quotation: " + (err.data?.error || err.message));
+      setDeleteError(err.data?.error || err.message || "Failed to delete quotation");
     }
   };
 
@@ -170,12 +206,31 @@ Govt Approved & Verified Mover.`;
 
   return (
     <div className="space-y-6 pb-12 max-w-5xl mx-auto">
-      {/* Relational Breadcrumbs & Actions */}
+      {/* Print CSS Configuration */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+          }
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .print-avoid-break {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
+
+      {/* Relational Action Bar (Hidden on Print) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs print:hidden">
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Left: Navigation Breadcrumbs & Status Badge */}
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={() => navigate("/quotes")}
-            className="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 flex items-center gap-1 text-xs cursor-pointer"
+            className="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 flex items-center gap-1 text-xs cursor-pointer transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Quotes List</span>
@@ -190,49 +245,114 @@ Govt Approved & Verified Mover.`;
               <span>← View Lead #{quote.leadId}</span>
             </Link>
           )}
+
+          {/* Current Status Pill Badge */}
+          {quote.status === "accepted" && (
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-xs font-bold px-3 py-1 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              Accepted (Won)
+            </span>
+          )}
+          {quote.status === "sent" && (
+            <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-800 border border-blue-200/80 text-xs font-bold px-3 py-1 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+              Sent / Pending Approval
+            </span>
+          )}
+          {quote.status === "rejected" && (
+            <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-800 border border-rose-200/80 text-xs font-bold px-3 py-1 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+              Rejected (Lost)
+            </span>
+          )}
+          {quote.status !== "accepted" && quote.status !== "sent" && quote.status !== "rejected" && (
+            <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-xs font-medium px-3 py-1 rounded-full">
+              {quote.status}
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(`/quotes/${quote.id}/edit`)}
-            className="flex items-center gap-1.5 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
-          >
-            <Edit2 className="w-4 h-4 text-blue-600" />
-            <span>Edit Quote</span>
-          </button>
-
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
-          >
-            <Printer className="w-4 h-4" />
-            <span className="hidden sm:inline">Print / Save PDF</span>
-          </button>
-
-          <a
-            href={`https://wa.me/91${quote.customerPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-              whatsAppMessage
-            )}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors"
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>WhatsApp Quote</span>
-          </a>
-
-          {quote.status !== "accepted" && (
+        {/* Right: Context-Aware Workflow Actions & Utilities */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Primary Action strictly conditional on quote.status */}
+          {quote.status === "accepted" && (
             <button
               onClick={() => setIsJobModalOpen(true)}
-              className="flex items-center gap-1.5 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 py-2 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               <Truck className="w-4 h-4" />
               <span>Convert to Job</span>
             </button>
           )}
 
+          {quote.status === "sent" && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handleUpdateStatus("accepted")}
+                className="flex items-center gap-1.5 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                title="Mark quote as accepted by customer"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>Mark Accepted</span>
+              </button>
+              <button
+                onClick={() => handleUpdateStatus("rejected")}
+                className="flex items-center gap-1.5 py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                title="Mark quote as rejected or lost"
+              >
+                <XCircle className="w-4 h-4" />
+                <span>Reject Quote</span>
+              </button>
+            </div>
+          )}
+
+          {quote.status === "rejected" && (
+            <button
+              onClick={() => handleUpdateStatus("sent")}
+              className="flex items-center gap-1.5 py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+              title="Reopen quote for customer negotiation"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Reopen Quote</span>
+            </button>
+          )}
+
+          {/* Utility Buttons */}
+          <a
+            href={`https://wa.me/91${quote.customerPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+              whatsAppMessage
+            )}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 font-semibold text-xs rounded-xl transition-colors"
+          >
+            <MessageSquare className="w-4 h-4 text-emerald-600" />
+            <span className="hidden sm:inline">WhatsApp</span>
+          </a>
+
           <button
-            onClick={handleDeleteQuote}
+            onClick={handleDownloadPdf}
+            className="flex items-center gap-1.5 py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+            title="Download Quote as PDF"
+          >
+            <Download className="w-4 h-4 text-white" />
+            <span>Download PDF</span>
+          </button>
+
+          <button
+            onClick={() => navigate(`/quotes/${quote.id}/edit`)}
+            className="flex items-center gap-1.5 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+            title="Edit Quote"
+          >
+            <Edit2 className="w-4 h-4 text-blue-600" />
+            <span className="hidden sm:inline">Edit</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setDeleteError("");
+              setIsDeleteModalOpen(true);
+            }}
             disabled={deleting}
             className="p-2 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer"
             title="Delete Quotation"
@@ -242,46 +362,65 @@ Govt Approved & Verified Mover.`;
         </div>
       </div>
 
-      {/* Printable Quotation Paper / Sheet */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6 print:border-none print:shadow-none print:p-0">
-        {/* Header Strip */}
-        <div className="flex justify-between items-start border-b border-slate-100 pb-6">
-          <div className="flex items-center gap-3">
-            <img
-              src={company.logo?.primary || "/images/primary-logo.webp"}
-              alt={company.name || "Company Logo"}
-              className="h-14 w-auto object-contain max-w-44"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                {company.name || "1st Om Packers and Movers"}
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">{company.tagline || ""}</p>
-              <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                GSTIN: {company.gstin || "N/A"} | PAN: {company.pan || "N/A"}
-              </p>
+      {/* Official Printable Quotation Document */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-5 print:border-none print:shadow-none print:p-0">
+        {/* Centered Brand Logo at Top */}
+        <div className="flex justify-center items-center pb-2">
+          <img
+            src={company.logo?.primary || "/images/primary-logo.webp"}
+            alt={company.name || "Company Logo"}
+            className="h-16 sm:h-20 w-auto object-contain max-w-64 drop-shadow-xs"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        </div>
+
+        {/* Company & Quotation Details Row (Data on Both Sides) */}
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-slate-200 pb-5">
+          {/* Left Side: Company Contact & Credentials */}
+          <div className="space-y-1 text-left max-w-md">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
+              {company.name || "1st Om Packers and Movers"}
+            </h1>
+            <p className="text-xs text-blue-600 font-semibold">{company.tagline || "Safer Moves, Brighter Tomorrows"}</p>
+            <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+              {company.headOffice?.address
+                ? `${company.headOffice.address}, ${company.headOffice.city}, ${company.headOffice.state} - ${company.headOffice.pincode}`
+                : "Ram Krishna Nagar, Soranpur, Goraiya Asthan, Patna, Bihar - 800027"}
+            </p>
+            <div className="pt-1 space-y-0.5 text-[11px] text-slate-600">
+              <p>Phone: <strong className="text-slate-900">{company.phone || "+91 7033488691"}</strong></p>
+              <p>Email: <strong className="text-slate-900">{company.email || "hello@1stompackersandmovers.com"}</strong></p>
+              <p>Web: <strong className="text-slate-900">{company.website?.replace(/^https?:\/\//, "") || "1stompackersandmovers.com"}</strong></p>
             </div>
+            <p className="text-[10px] text-slate-500 font-mono pt-0.5">
+              {isRealGstin
+                ? `GSTIN: ${company.gstin} ${isRealPan ? `| PAN: ${company.pan}` : ""}`
+                : "Govt. Registered Relocation & Highway Transport Service (IBA Approved Standards)"}
+            </p>
           </div>
 
-          <div className="text-right">
-            <span className="inline-block px-3 py-1 bg-blue-50 text-blue-700 font-black text-xs rounded-lg uppercase tracking-wider mb-1 font-mono">
-              Quotation
+          {/* Right Side: Quotation Metadata */}
+          <div className="text-left sm:text-right space-y-1 shrink-0">
+            <span className="inline-block px-3 py-1 bg-blue-50 text-blue-700 font-black text-xs rounded-lg uppercase tracking-wider mb-1 font-mono border border-blue-200/60">
+              Quotation / Estimate
             </span>
-            <div className="text-sm font-mono font-bold text-slate-900">{quote.quoteNumber}</div>
-            <div className="text-xs text-slate-500">
-              Date: {formatDate(quote.createdAt)}
+            <div className="text-base font-mono font-bold text-slate-900">{quote.quoteNumber}</div>
+            <div className="text-xs text-slate-600">
+              Date: <strong className="text-slate-800">{formatDate(quote.createdAt)}</strong>
+            </div>
+            <div className="text-[11px] text-slate-500">
+              Validity: <strong>15 Days</strong>
             </div>
           </div>
         </div>
 
-        {/* Customer & Route Details */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/70 p-4 rounded-xl border border-slate-100">
+        {/* Customer & Relocation Route Overview */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/80 p-4 rounded-xl border border-slate-200/80">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Customer Details
+              Quotation Prepared For
             </span>
             <div className="text-sm font-bold text-slate-900 mt-0.5">{quote.customerName}</div>
             <div className="text-xs text-slate-600 flex items-center gap-1 font-mono mt-0.5">
@@ -292,35 +431,33 @@ Govt Approved & Verified Mover.`;
 
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Move Route & Schedule
+              Relocation Route & Schedule
             </span>
             <div className="text-xs font-medium text-slate-700 mt-1 flex items-start gap-1">
               <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
               <span>
-                <strong>From:</strong> {quote.movingFrom}
+                <strong>Origin (From):</strong> {quote.movingFrom}
               </span>
             </div>
             <div className="text-xs font-medium text-slate-700 mt-1 flex items-start gap-1">
               <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
               <span>
-                <strong>To:</strong> {quote.movingTo}
+                <strong>Destination (To):</strong> {quote.movingTo}
               </span>
             </div>
-            {quote.moveDate && (
-              <div className="text-xs font-medium text-slate-700 mt-1 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span>
-                  <strong>Target Date:</strong> {quote.moveDate}
-                </span>
-              </div>
-            )}
+            <div className="text-xs font-medium text-slate-700 mt-1 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span>
+                <strong>Target Move Date:</strong> {quote.moveDate || "To be confirmed upon booking"}
+              </span>
+            </div>
           </div>
 
-          {(quote.lead?.service || quote.lead?.moveType || quote.lead?.timeline) && (
-            <div className="col-span-1 sm:col-span-2 bg-blue-50/70 p-3 rounded-lg border border-blue-100 flex flex-wrap gap-6 text-xs">
+          {(quote.lead?.service || quote.lead?.moveType) && (
+            <div className="col-span-1 sm:col-span-2 bg-white p-2.5 rounded-lg border border-slate-200/70 flex flex-wrap gap-6 text-xs">
               {quote.lead?.service && (
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">
                     Service Requested
                   </span>
                   <span className="font-semibold text-slate-900">{quote.lead.service}</span>
@@ -328,33 +465,25 @@ Govt Approved & Verified Mover.`;
               )}
               {quote.lead?.moveType && (
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">
                     Move Category
                   </span>
                   <span className="font-semibold text-slate-900">{quote.lead.moveType}</span>
-                </div>
-              )}
-              {quote.lead?.timeline && (
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 block">
-                    Customer Timeline
-                  </span>
-                  <span className="font-semibold text-slate-900">{quote.lead.timeline}</span>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        {/* Inventory Articles Table */}
+        {/* Inventory Articles Table (if items added) */}
         {inventory.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-2 print-avoid-break">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Goods & Articles Included for Relocation
             </h4>
             <div className="border border-slate-200 rounded-xl overflow-hidden">
               <table className="w-full text-xs">
-                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                   <tr>
                     <th className="py-2 px-3 text-left w-12">#</th>
                     <th className="py-2 px-3 text-left">Article Description</th>
@@ -381,21 +510,21 @@ Govt Approved & Verified Mover.`;
           </div>
         )}
 
-        {/* Pricing Breakdown Sheet */}
-        <div className="space-y-2">
+        {/* Professional Charge Breakdown Sheet */}
+        <div className="space-y-2 print-avoid-break">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Professional Charge Breakdown
           </h4>
           <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 text-xs">
             <div className="flex justify-between py-2.5 px-4 bg-slate-50/50 font-medium">
-              <span className="text-slate-700">Safe Highway Transport Freight</span>
+              <span className="text-slate-700">Safe Highway Container Transport Freight</span>
               <span className="font-mono font-semibold">
                 ₹{quote.transportCharges.toLocaleString("en-IN")}
               </span>
             </div>
             <div className="flex justify-between py-2.5 px-4">
               <span className="text-slate-600">
-                Multi-layer Protective Packing & Materials
+                Multi-layer Protective Packing Materials & Labor
               </span>
               <span className="font-mono">₹{quote.packagingCharges.toLocaleString("en-IN")}</span>
             </div>
@@ -410,8 +539,8 @@ Govt Approved & Verified Mover.`;
             {quote.insuranceCharges > 0 && (
               <div className="flex justify-between py-2.5 px-4">
                 <span className="text-slate-600">
-                  Transit Insurance Cover (Declared Value: ₹
-                  {quote.insuranceDeclaredValue.toLocaleString("en-IN")})
+                  Transit Insurance Cover (Declared Goods Value: ₹
+                  {quote.insuranceDeclaredValue?.toLocaleString("en-IN") || "—"})
                 </span>
                 <span className="font-mono">
                   ₹{quote.insuranceCharges.toLocaleString("en-IN")}
@@ -429,10 +558,7 @@ Govt Approved & Verified Mover.`;
             <div className="flex justify-between py-2.5 px-4 bg-slate-50 font-semibold">
               <span className="text-slate-800">Taxable Subtotal</span>
               <span className="font-mono text-slate-900">
-                ₹
-                {(
-                  quote.totalAmount - (quote.gstAmount || 0)
-                ).toLocaleString("en-IN")}
+                ₹{(quote.totalAmount - (quote.gstAmount || 0)).toLocaleString("en-IN")}
               </span>
             </div>
             {quote.gstRate > 0 && (
@@ -444,7 +570,7 @@ Govt Approved & Verified Mover.`;
               </div>
             )}
             <div className="flex justify-between py-3 px-4 bg-blue-50/80 text-blue-900 text-sm font-black border-t-2 border-blue-200">
-              <span>Total Estimated Investment</span>
+              <span>Total Estimated Investment (All-Inclusive)</span>
               <span className="font-mono text-base text-blue-700">
                 ₹{quote.totalAmount.toLocaleString("en-IN")}
               </span>
@@ -453,39 +579,57 @@ Govt Approved & Verified Mover.`;
         </div>
 
         {/* Banking Details & Terms */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100 text-[11px] text-slate-500">
-          <div>
-            <h5 className="font-bold text-slate-700 uppercase tracking-wider mb-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-200 text-[11px] text-slate-600 print-avoid-break">
+          <div className="bg-slate-50/60 p-3 rounded-xl border border-slate-200/70 space-y-1">
+            <h5 className="font-bold text-slate-800 uppercase tracking-wider mb-1">
               Payment & Bank Details
             </h5>
             <p>
               Bank: <strong>{company.bankDetails?.bankName || "State Bank of India"}</strong>
             </p>
             <p>
-              Account: <strong>{company.bankDetails?.accountNumber || "N/A"}</strong>
+              Official UPI ID: <strong>{company.upi?.id || company.bankDetails?.upiId || "1stompackers@sbi"}</strong>
             </p>
-            <p>
-              IFSC: <strong>{company.bankDetails?.ifsc || "N/A"}</strong>
-            </p>
-            <p>
-              UPI ID: <strong>{company.upi?.id || company.bankDetails?.upiId || "N/A"}</strong>
+            {isRealAccount ? (
+              <>
+                <p>Account: <strong>{company.bankDetails.accountNumber}</strong></p>
+                <p>IFSC: <strong>{company.bankDetails.ifsc}</strong></p>
+              </>
+            ) : (
+              <p className="text-slate-500 italic">
+                Direct NEFT / RTGS account details will be shared on booking confirmation.
+              </p>
+            )}
+            <p className="text-[10px] text-slate-500 pt-0.5">
+              Payment Terms: 50% advance at loading, 50% balance before unloading.
             </p>
           </div>
 
-          <div>
-            <h5 className="font-bold text-slate-700 uppercase tracking-wider mb-1">
+          <div className="bg-slate-50/60 p-3 rounded-xl border border-slate-200/70 space-y-1">
+            <h5 className="font-bold text-slate-800 uppercase tracking-wider mb-1">
               Terms & Conditions
             </h5>
-            <ul className="list-disc pl-4 space-y-0.5">
+            <ul className="list-disc pl-4 space-y-0.5 text-slate-600">
               {(company.terms?.quotation || [
                 "Quotation is valid for 15 days from the date of issue.",
                 "Toll tax, octroi, parking & state entry tax will be charged as actual if applicable.",
-                "Transit Insurance will be charged extra at 3% on declared goods value."
-              ]).slice(0, 3).map((term, i) => (
+                "Transit Insurance will be charged extra at 3% on declared goods value.",
+                "Packing materials remain company property unless explicitly purchased."
+              ]).slice(0, 4).map((term, i) => (
                 <li key={i}>{term}</li>
               ))}
             </ul>
           </div>
+        </div>
+
+        {/* Computer-Generated Document Notice (No signature needed) */}
+        <div className="pt-6 border-t border-slate-200 text-center text-xs text-slate-500 space-y-1 print-avoid-break">
+          <p className="font-semibold text-slate-800 text-xs sm:text-sm">
+            This is a computer-generated quotation and does not require any signature or seal.
+          </p>
+          <p className="text-[11px] text-slate-400">
+            1st Om Packers and Movers • Patna, Bihar • Helpline: +91 7033488691 • Email: hello@1stompackersandmovers.com
+          </p>
         </div>
       </div>
 
@@ -668,6 +812,83 @@ Govt Approved & Verified Mover.`;
                 )}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-start justify-between">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Delete Quotation?
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Are you sure you want to permanently delete quotation{" "}
+                <span className="font-mono font-bold text-slate-800">{quote.quoteNumber}</span> for{" "}
+                <span className="font-semibold text-slate-800">{quote.customerName}</span>? This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1">
+              <div className="flex justify-between text-slate-600">
+                <span>Quotation Value:</span>
+                <span className="font-mono font-bold text-slate-900">₹{Number(quote.totalAmount || 0).toLocaleString("en-IN")}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Moving Route:</span>
+                <span className="font-medium text-slate-800 truncate max-w-[200px]">{quote.movingFrom} ➔ {quote.movingTo}</span>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={deleting}
+                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-xs shadow-xs shadow-rose-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-70"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Quote</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

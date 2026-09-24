@@ -8,9 +8,11 @@ import {
   ShieldCheck,
   Building2,
   FileText,
+  Download,
 } from "lucide-react";
 import { useGetBiltyByIdQuery } from "../../../../store/apiSlices/biltiesApiSlice";
 import { useGetSettingsQuery } from "../../../../store/apiSlices/settingsApiSlice";
+import { companyConfig } from "../../../../configs/company.config";
 
 const BiltyView = () => {
   const { id } = useParams();
@@ -18,7 +20,21 @@ const BiltyView = () => {
 
   const { data: bilty, isLoading: loading } = useGetBiltyByIdQuery(id);
   const { data: dbSettings } = useGetSettingsQuery();
-  const company = dbSettings || {};
+  const company = {
+    ...companyConfig,
+    ...(dbSettings || {}),
+    headOffice: {
+      ...companyConfig.headOffice,
+      ...(dbSettings?.headOffice || {}),
+    },
+    bankDetails: {
+      ...companyConfig.bankDetails,
+      ...(dbSettings?.bankDetails || {}),
+    },
+  };
+
+  const isRealGstin = company.gstin && !company.gstin.includes("XXXXX");
+  const isRealPan = company.pan && !company.pan.includes("XXXXX");
 
   const formatDate = (dateStr) => {
     if (!dateStr || dateStr === "CURRENT_TIMESTAMP" || dateStr === "null" || dateStr === "undefined") {
@@ -37,6 +53,15 @@ const BiltyView = () => {
     } catch {
       return "—";
     }
+  };
+
+  const handleDownloadPdf = () => {
+    const prevTitle = document.title;
+    document.title = `Bilty-${bilty?.lrNumber || "LR"}-${(bilty?.consignorName || "Consignor").replace(/[^a-zA-Z0-9]/g, "-")}`;
+    window.print();
+    setTimeout(() => {
+      document.title = prevTitle;
+    }, 1000);
   };
 
   if (loading) {
@@ -59,12 +84,30 @@ Risk: ${bilty.riskType.toUpperCase().replace("_", " ")}
 Emergency Transport Helpline: ${company.phone || "+91 7033488691"}`;
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10 max-w-5xl mx-auto">
+      {/* Print CSS Configuration */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+          }
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .print-avoid-break {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
+
       {/* Top Bar (Hidden in Print) */}
       <div className="flex items-center justify-between gap-2 print:hidden">
         <button
           onClick={() => navigate("/bilties")}
-          className="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 flex items-center gap-1 text-xs cursor-pointer"
+          className="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 flex items-center gap-1 text-xs cursor-pointer transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Bilties List</span>
@@ -72,11 +115,12 @@ Emergency Transport Helpline: ${company.phone || "+91 7033488691"}`;
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+            onClick={handleDownloadPdf}
+            className="flex items-center gap-1.5 py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+            title="Download Bilty as PDF"
           >
-            <Printer className="w-4 h-4" />
-            <span className="hidden sm:inline">Print / Save PDF</span>
+            <Download className="w-4 h-4 text-white" />
+            <span>Download PDF</span>
           </button>
 
           <a
@@ -85,46 +129,53 @@ Emergency Transport Helpline: ${company.phone || "+91 7033488691"}`;
             )}`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors"
+            className="flex items-center gap-1.5 py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 font-semibold text-xs rounded-xl transition-colors"
           >
-            <MessageSquare className="w-4 h-4" />
-            <span>WhatsApp to Sender / Driver</span>
+            <MessageSquare className="w-4 h-4 text-emerald-600" />
+            <span>WhatsApp to Driver</span>
           </a>
         </div>
       </div>
 
       {/* Official Lorry Receipt / Bilty Printable Sheet */}
       <div className="bg-white rounded-2xl border-2 border-slate-800 p-6 sm:p-8 shadow-sm space-y-5 print:border-2 print:border-black print:shadow-none print:p-4">
-        {/* LR Top Header */}
+        {/* Centered Brand Logo at Top */}
+        <div className="flex justify-center items-center pb-2">
+          <img
+            src={company.logo?.primary || "/images/primary-logo.webp"}
+            alt={company.name || "Company Logo"}
+            className="h-14 sm:h-16 w-auto object-contain max-w-60 drop-shadow-xs"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        </div>
+
+        {/* LR Top Header Row (Data on Both Sides) */}
         <div className="border-b-2 border-slate-800 pb-4 flex flex-col sm:flex-row justify-between items-start gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <img
-                src={company.logo?.primary || "/images/primary-logo.webp"}
-                alt={company.name || "Company Logo"}
-                className="h-12 w-auto object-contain max-w-40"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight">
-                  {company.name || "1st Om Packers and Movers"}
-                </h1>
-                <p className="text-[11px] font-semibold text-slate-600">
-                  GOVT. REGD. PACKERS & HIGHWAY TRANSPORT CONTRACTORS
-                </p>
-              </div>
-            </div>
-            <p className="text-xs text-slate-600 mt-1">
-              Head Office: {company.headOffice?.address ? `${company.headOffice.address}, ${company.headOffice.city}, ${company.headOffice.state}` : "Ram Krishna Nagar, Patna, Bihar"}
+          <div className="space-y-1 text-left max-w-md">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight leading-tight">
+              {company.name || "1st Om Packers and Movers"}
+            </h1>
+            <p className="text-[11px] font-semibold text-blue-800">
+              GOVT. REGD. PACKERS & HIGHWAY TRANSPORT CONTRACTORS (IBA APPROVED)
             </p>
-            <p className="text-xs font-semibold text-slate-800">
-              GSTIN: {company.gstin || "N/A"} | Helpline: {company.phone || "+91 7033488691"}
+            <p className="text-xs text-slate-600 mt-1 leading-snug">
+              {company.headOffice?.address
+                ? `${company.headOffice.address}, ${company.headOffice.city}, ${company.headOffice.state} - ${company.headOffice.pincode}`
+                : "Ram Krishna Nagar, Soranpur, Goraiya Asthan, Patna, Bihar - 800027"}
+            </p>
+            <div className="pt-1 space-y-0.5 text-[11px] text-slate-600">
+              <p>Phone: <strong className="text-slate-900">{company.phone || "+91 7033488691"}</strong></p>
+              <p>Email: <strong className="text-slate-900">{company.email || "hello@1stompackersandmovers.com"}</strong></p>
+              <p>Web: <strong className="text-slate-900">{company.website?.replace(/^https?:\/\//, "") || "1stompackersandmovers.com"}</strong></p>
+            </div>
+            <p className="text-xs font-semibold text-slate-800 pt-0.5 font-mono">
+              {isRealGstin ? `GSTIN: ${company.gstin} ${isRealPan ? `| PAN: ${company.pan}` : ""}` : "Govt Approved Transport Carrier"}
             </p>
           </div>
 
-          <div className="sm:text-right border-2 border-slate-900 p-2 rounded-xl bg-slate-50 min-w-44">
+          <div className="sm:text-right border-2 border-slate-900 p-2 rounded-xl bg-slate-50 min-w-44 shrink-0">
             <span className="block text-[10px] font-black uppercase tracking-wider text-slate-500">
               CONSIGNMENT NOTE (LR)
             </span>
@@ -179,7 +230,7 @@ Emergency Transport Helpline: ${company.phone || "+91 7033488691"}`;
         </div>
 
         {/* Goods Description & Packages */}
-        <div className="border border-slate-300 rounded-xl overflow-hidden text-xs">
+        <div className="border border-slate-300 rounded-xl overflow-hidden text-xs print-avoid-break">
           <table className="w-full text-left">
             <thead className="bg-slate-800 text-white font-semibold">
               <tr>
@@ -213,7 +264,7 @@ Emergency Transport Helpline: ${company.phone || "+91 7033488691"}`;
         </div>
 
         {/* Legal Terms & Signatures */}
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4 pt-2 print-avoid-break">
           <div className="text-[10px] text-slate-500 space-y-0.5 border-t border-slate-200 pt-2">
             <p className="font-bold text-slate-700">NOTICE & CONDITIONS:</p>
             <ul className="list-disc pl-4 space-y-0.5">

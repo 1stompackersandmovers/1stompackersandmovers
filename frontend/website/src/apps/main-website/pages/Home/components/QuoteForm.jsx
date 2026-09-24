@@ -408,7 +408,8 @@ const QuoteForm = ({
     setStatus("submitting");
 
     try {
-      const res = await fetch("/api/leads", {
+      const apiBase = import.meta.env.VITE_API_URL || "";
+      const res = await fetch(`${apiBase}/api/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

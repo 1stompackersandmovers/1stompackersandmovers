@@ -69,6 +69,7 @@ export const recordInvoicePayment = async (
   const updatedInv = await db
     .update(invoices)
     .set({
+      advancePaid: totalPaid, // Keep advancePaid in sync so updateInvoicePayment reads correct total
       balanceDue,
       paymentStatus,
     })
@@ -77,7 +78,10 @@ export const recordInvoicePayment = async (
 
   return {
     payment: payment[0],
-    invoice: updatedInv[0],
+    invoice: {
+      ...updatedInv[0],
+      paidAmount: totalPaid,
+    },
   };
 };
 

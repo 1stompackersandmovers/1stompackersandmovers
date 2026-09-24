@@ -15,13 +15,26 @@ import {
   X,
   Edit2,
 } from "lucide-react";
-import { useGetQuotesQuery } from "../../../../store/apiSlices/quotesApiSlice";
+import {
+  useGetQuotesQuery,
+  useUpdateQuoteStatusMutation,
+} from "../../../../store/apiSlices/quotesApiSlice";
 import { CardGridSkeleton } from "../../shared/components/Skeleton";
 
 const QuotesList = () => {
   const { data: quotes = [], isLoading, isFetching, refetch: fetchQuotes } =
     useGetQuotesQuery();
+  const [updateQuoteStatus] = useUpdateQuoteStatusMutation();
   const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleUpdateStatus = async (quoteId, newStatus, e) => {
+    if (e) e.stopPropagation();
+    try {
+      await updateQuoteStatus({ id: quoteId, status: newStatus }).unwrap();
+    } catch (err) {
+      alert("Failed to update status: " + (err.data?.error || err.message));
+    }
+  };
 
   const handleSync = async () => {
     if (isSyncing) return;
@@ -298,7 +311,7 @@ const QuotesList = () => {
                     <p className="text-xs text-slate-500 font-mono">{quote.customerPhone}</p>
                   </div>
                   <div className="text-right space-y-1 shrink-0">
-                    {getStatusBadge(quote.status)}
+                    <div>{getStatusBadge(quote.status)}</div>
                     <p className="text-lg font-black text-slate-900 font-mono pt-1">
                       ₹{Number(quote.totalAmount || 0).toLocaleString("en-IN")}
                     </p>
