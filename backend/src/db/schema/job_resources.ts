@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { jobs } from "./jobs";
 import { vehicles } from "./vehicles";
 import { staff } from "./staff";
@@ -14,7 +15,7 @@ export const jobVehicles = sqliteTable("job_vehicles", {
   driverName: text("driver_name"),
   driverPhone: text("driver_phone"),
   role: text("role").default("primary"),
-  createdAt: text("created_at").default("CURRENT_TIMESTAMP").notNull(),
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export const jobStaff = sqliteTable("job_staff", {
@@ -37,7 +38,7 @@ export const jobStaff = sqliteTable("job_staff", {
   paymentDate: text("payment_date"),
   paymentMode: text("payment_mode"),
   paymentNotes: text("payment_notes"),
-  createdAt: text("created_at").default("CURRENT_TIMESTAMP").notNull(),
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export const jobExpenses = sqliteTable("job_expenses", {
@@ -50,7 +51,7 @@ export const jobExpenses = sqliteTable("job_expenses", {
   description: text("description"),
   paidBy: text("paid_by"),
   receiptNote: text("receipt_note"),
-  createdAt: text("created_at").default("CURRENT_TIMESTAMP").notNull(),
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type JobVehicle = typeof jobVehicles.$inferSelect;

@@ -15,13 +15,18 @@ import {
   UserCheck,
   AlertCircle,
   Loader2,
+  Edit2,
+  Trash2,
 } from "lucide-react";
 import {
   useGetQuoteByIdQuery,
   useUpdateQuoteStatusMutation,
+  useDeleteQuoteMutation,
 } from "../../../../store/apiSlices/quotesApiSlice";
 import { useCreateJobMutation } from "../../../../store/apiSlices/jobsApiSlice";
-import { companyConfig } from "../../../../configs/company.config";
+import { useGetSettingsQuery } from "../../../../store/apiSlices/settingsApiSlice";
+import { useGetVehiclesQuery } from "../../../../store/apiSlices/vehiclesApiSlice";
+import { useGetStaffQuery } from "../../../../store/apiSlices/staffApiSlice";
 import { FormField } from "../../../../components/FormField";
 
 const QuoteDetail = () => {
@@ -29,8 +34,39 @@ const QuoteDetail = () => {
   const navigate = useNavigate();
 
   const { data: quote, isLoading: loading } = useGetQuoteByIdQuery(id);
+  const { data: dbSettings } = useGetSettingsQuery();
+  const company = dbSettings || {};
   const [updateQuoteStatus] = useUpdateQuoteStatusMutation();
+  const [deleteQuote, { isLoading: deleting }] = useDeleteQuoteMutation();
   const [createJob, { isLoading: converting }] = useCreateJobMutation();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === "CURRENT_TIMESTAMP" || dateStr === "null" || dateStr === "undefined") {
+      return "—";
+    }
+    try {
+      const s = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T") + "Z";
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? (dateStr.length > 20 ? "—" : dateStr) : d.toLocaleDateString("en-IN");
+    } catch {
+      return "—";
+    }
+  };
+
+  const handleDeleteQuote = async () => {
+    if (!window.confirm(`Are you sure you want to permanently delete quotation ${quote.quoteNumber}?`)) {
+      return;
+    }
+    try {
+      await deleteQuote(id).unwrap();
+      navigate(quote.leadId ? `/leads/${quote.leadId}` : "/quotes");
+    } catch (err) {
+      alert("Failed to delete quotation: " + (err.data?.error || err.message));
+    }
+  };
+
+  const { data: availableVehicles = [] } = useGetVehiclesQuery({});
+  const { data: allStaff = [] } = useGetStaffQuery({});
 
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [modalErrors, setModalErrors] = useState({});
@@ -112,7 +148,7 @@ const QuoteDetail = () => {
 
   const inventory = quote.inventoryData ? JSON.parse(quote.inventoryData) : [];
 
-  const whatsAppMessage = `*Official Relocation Quotation from ${companyConfig.name}*
+  const whatsAppMessage = `*Official Relocation Quotation from ${company.name || "1st Om Packers and Movers"}*
 Quote No: ${quote.quoteNumber}
 Client: ${quote.customerName}
 Route: ${quote.movingFrom} ➔ ${quote.movingTo}
@@ -129,7 +165,7 @@ ${quote.insuranceCharges ? `• Insurance Cover: ₹${quote.insuranceCharges}\n`
 *Total Amount Payable: ₹${quote.totalAmount}*
 ━━━━━━━━━━━━━━━━━━
 
-For booking confirmation, reply to this message or call ${companyConfig.contact.primaryPhone}.
+For booking confirmation, reply to this message or call ${company.phone || "+91 7033488691"}.
 Govt Approved & Verified Mover.`;
 
   return (
@@ -157,6 +193,14 @@ Govt Approved & Verified Mover.`;
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/quotes/${quote.id}/edit`)}
+            className="flex items-center gap-1.5 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+          >
+            <Edit2 className="w-4 h-4 text-blue-600" />
+            <span>Edit Quote</span>
+          </button>
+
           <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
@@ -186,6 +230,15 @@ Govt Approved & Verified Mover.`;
               <span>Convert to Job</span>
             </button>
           )}
+
+          <button
+            onClick={handleDeleteQuote}
+            disabled={deleting}
+            className="p-2 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer"
+            title="Delete Quotation"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -194,16 +247,21 @@ Govt Approved & Verified Mover.`;
         {/* Header Strip */}
         <div className="flex justify-between items-start border-b border-slate-100 pb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-md">
-              1OM
-            </div>
+            <img
+              src={company.logo?.primary || "/images/primary-logo.webp"}
+              alt={company.name || "Company Logo"}
+              className="h-14 w-auto object-contain max-w-44"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                {companyConfig.name}
+                {company.name || "1st Om Packers and Movers"}
               </h1>
-              <p className="text-xs text-slate-500 font-medium">{companyConfig.tagline}</p>
+              <p className="text-xs text-slate-500 font-medium">{company.tagline || ""}</p>
               <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                GSTIN: {companyConfig.legal.gstin} | PAN: {companyConfig.legal.pan}
+                GSTIN: {company.gstin || "N/A"} | PAN: {company.pan || "N/A"}
               </p>
             </div>
           </div>
@@ -214,7 +272,7 @@ Govt Approved & Verified Mover.`;
             </span>
             <div className="text-sm font-mono font-bold text-slate-900">{quote.quoteNumber}</div>
             <div className="text-xs text-slate-500">
-              Date: {new Date(quote.createdAt).toLocaleDateString("en-IN")}
+              Date: {formatDate(quote.createdAt)}
             </div>
           </div>
         </div>
@@ -257,6 +315,35 @@ Govt Approved & Verified Mover.`;
               </div>
             )}
           </div>
+
+          {(quote.lead?.service || quote.lead?.moveType || quote.lead?.timeline) && (
+            <div className="col-span-1 sm:col-span-2 bg-blue-50/70 p-3 rounded-lg border border-blue-100 flex flex-wrap gap-6 text-xs">
+              {quote.lead?.service && (
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 block">
+                    Service Requested
+                  </span>
+                  <span className="font-semibold text-slate-900">{quote.lead.service}</span>
+                </div>
+              )}
+              {quote.lead?.moveType && (
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 block">
+                    Move Category
+                  </span>
+                  <span className="font-semibold text-slate-900">{quote.lead.moveType}</span>
+                </div>
+              )}
+              {quote.lead?.timeline && (
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-500 block">
+                    Customer Timeline
+                  </span>
+                  <span className="font-semibold text-slate-900">{quote.lead.timeline}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Inventory Articles Table */}
@@ -372,16 +459,16 @@ Govt Approved & Verified Mover.`;
               Payment & Bank Details
             </h5>
             <p>
-              Bank: <strong>{companyConfig.bankDetails.bankName}</strong>
+              Bank: <strong>{company.bankDetails?.bankName || "State Bank of India"}</strong>
             </p>
             <p>
-              Account: <strong>{companyConfig.bankDetails.accountNumber}</strong>
+              Account: <strong>{company.bankDetails?.accountNumber || "N/A"}</strong>
             </p>
             <p>
-              IFSC: <strong>{companyConfig.bankDetails.ifsc}</strong>
+              IFSC: <strong>{company.bankDetails?.ifsc || "N/A"}</strong>
             </p>
             <p>
-              UPI ID: <strong>{companyConfig.bankDetails.upiId}</strong>
+              UPI ID: <strong>{company.upi?.id || company.bankDetails?.upiId || "N/A"}</strong>
             </p>
           </div>
 
@@ -390,7 +477,11 @@ Govt Approved & Verified Mover.`;
               Terms & Conditions
             </h5>
             <ul className="list-disc pl-4 space-y-0.5">
-              {companyConfig.terms.quotation.slice(0, 3).map((term, i) => (
+              {(company.terms?.quotation || [
+                "Quotation is valid for 15 days from the date of issue.",
+                "Toll tax, octroi, parking & state entry tax will be charged as actual if applicable.",
+                "Transit Insurance will be charged extra at 3% on declared goods value."
+              ]).slice(0, 3).map((term, i) => (
                 <li key={i}>{term}</li>
               ))}
             </ul>
@@ -437,27 +528,52 @@ Govt Approved & Verified Mover.`;
               </FormField>
 
               <FormField label="Preferred Time Slot">
-                <input
-                  type="text"
+                <select
                   value={jobForm.scheduledTime}
                   onChange={(e) =>
                     setJobForm({ ...jobForm, scheduledTime: e.target.value })
                   }
-                  placeholder="e.g. 08:00 AM"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 outline-none"
-                />
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 outline-none bg-white"
+                >
+                  {["06:00 AM","07:00 AM","08:00 AM","09:00 AM","10:00 AM","11:00 AM","12:00 PM","01:00 PM","02:00 PM","03:00 PM","04:00 PM","05:00 PM"].map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
               </FormField>
 
-              <FormField label="Allocated Vehicle Type" required error={modalErrors.vehicleAssigned}>
-                <input
-                  type="text"
-                  value={jobForm.vehicleAssigned}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, vehicleAssigned: e.target.value })
-                  }
-                  placeholder="e.g. Tata 407 (Closed Container)"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 outline-none"
-                />
+              <FormField label="Allocated Vehicle" required error={modalErrors.vehicleAssigned}>
+                {availableVehicles.filter((v) => v.status !== "retired").length === 0 ? (
+                  <div className="w-full px-3 py-2 border border-amber-200 bg-amber-50 rounded-xl text-xs text-amber-700">
+                    No vehicles added yet — add vehicles in Fleet section first.
+                  </div>
+                ) : (
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const v = availableVehicles.find((v) => v.id === parseInt(e.target.value));
+                      if (v) setJobForm({
+                        ...jobForm,
+                        vehicleAssigned: `${v.vehicleNumber} (${v.vehicleType})`,
+                        driverName: v.defaultDriverName || jobForm.driverName,
+                        driverPhone: v.defaultDriverPhone || jobForm.driverPhone,
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 outline-none bg-white"
+                  >
+                    <option value="">-- Select from fleet --</option>
+                    {availableVehicles.filter((v) => v.status !== "retired").map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.vehicleNumber} — {v.vehicleType} [{v.status}]
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {jobForm.vehicleAssigned && (
+                  <div className="mt-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 flex justify-between items-center">
+                    <span>{jobForm.vehicleAssigned}</span>
+                    <button type="button" onClick={() => setJobForm({ ...jobForm, vehicleAssigned: "" })} className="text-rose-500 hover:text-rose-700 font-bold ml-2">×</button>
+                  </div>
+                )}
               </FormField>
 
               <div className="grid grid-cols-2 gap-3">
@@ -486,17 +602,44 @@ Govt Approved & Verified Mover.`;
                 </FormField>
               </div>
 
-              <FormField label="Crew Assignment">
-                <input
-                  type="text"
-                  value={jobForm.crewMembers}
-                  onChange={(e) =>
-                    setJobForm({ ...jobForm, crewMembers: e.target.value })
-                  }
-                  placeholder="e.g. 4 Packers & Loaders"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 outline-none"
-                />
+              <FormField label="Crew Members">
+                <div className="space-y-1.5">
+                  {allStaff.filter((s) => s.status !== "inactive").length === 0 ? (
+                    <div className="px-3 py-2 border border-amber-200 bg-amber-50 rounded-xl text-xs text-amber-700">
+                      No crew added yet — add staff in Team section.
+                    </div>
+                  ) : (
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        const s = allStaff.find((s) => s.id === parseInt(e.target.value));
+                        if (!s) return;
+                        const entry = `${s.name} (${s.role})`;
+                        const current = jobForm.crewMembers ? jobForm.crewMembers.split(", ").filter(Boolean) : [];
+                        if (!current.includes(entry)) {
+                          setJobForm({ ...jobForm, crewMembers: [...current, entry].join(", ") });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 outline-none bg-white"
+                    >
+                      <option value="">+ Add crew member from team...</option>
+                      {allStaff.filter((s) => s.status !== "inactive").map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} — {s.role} [{s.status}]
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {jobForm.crewMembers && (
+                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-700 flex justify-between items-start gap-2">
+                      <span>{jobForm.crewMembers}</span>
+                      <button type="button" onClick={() => setJobForm({ ...jobForm, crewMembers: "" })} className="text-rose-500 hover:text-rose-700 font-bold shrink-0">Clear</button>
+                    </div>
+                  )}
+                </div>
               </FormField>
+
 
               <FormField label="Special Handling Instructions">
                 <textarea

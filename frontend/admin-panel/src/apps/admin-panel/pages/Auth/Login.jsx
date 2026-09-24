@@ -86,7 +86,7 @@ const Login = () => {
         navigate("/leads");
       }
     } catch (err) {
-      setError(err.data?.error || err.message || "Invalid username or password");
+      setError(err.data?.error || err.message || "Invalid username/email or password");
     } finally {
       setLoading(false);
     }
@@ -196,7 +196,6 @@ const Login = () => {
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">
             {companyConfig.name}
           </h2>
-          <p className="text-xs text-slate-500 font-medium">Logistics & Operations Management OS</p>
         </div>
 
         {/* Alerts */}
@@ -214,12 +213,12 @@ const Login = () => {
           </div>
         )}
 
-        {/* MODE 1: Standard Username & Password */}
+        {/* MODE 1: Standard Username/Email & Password */}
         {mode === "credentials" && (
           <form onSubmit={handleCredentialSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Username
+                Username or Email
               </label>
               <div className="relative">
                 <User className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
@@ -228,7 +227,8 @@ const Login = () => {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username"
+                  placeholder="Enter username or email"
+                  autoComplete="username"
                   className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
                 />
               </div>
@@ -354,10 +354,10 @@ const Login = () => {
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
                 <KeyRound className="w-4 h-4 text-blue-600" />
-                <span>Reset Administrator Password</span>
+                <span>Reset Account Password</span>
               </h3>
               <p className="text-xs text-slate-500">
-                Enter your admin username or email address. We'll send a 6-digit verification code to your email.
+                Enter your account username or email address. We'll send a 6-digit verification code to your email.
               </p>
             </div>
 
@@ -373,7 +373,7 @@ const Login = () => {
                   autoFocus
                   value={forgotIdentifier}
                   onChange={(e) => setForgotIdentifier(e.target.value)}
-                  placeholder="admin or user@domain.com"
+                  placeholder="username or user@domain.com"
                   className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
                 />
               </div>

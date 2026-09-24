@@ -13,6 +13,11 @@ export const companyConfig = {
   whatsapp: "+91 7033488691",
   email: "hello@1stompackersandmovers.com",
   website: "https://1stompackersandmovers.com",
+  contact: {
+    primaryPhone: "+91 7033488691",
+    email: "hello@1stompackersandmovers.com",
+    whatsapp: "+91 7033488691",
+  },
 
   // Brand Imagery
   logo: {
@@ -23,6 +28,11 @@ export const companyConfig = {
   },
 
   // Business & Tax Compliance
+  legal: {
+    legalName: "1st Om Packers and Movers",
+    gstin: "20XXXXX0000X1Z5",
+    pan: "XXXXX0000X",
+  },
   gstin: "20XXXXX0000X1Z5", // Customizable with client's actual GSTIN
   pan: "XXXXX0000X",
   sacCode: "9965", // Goods Transport Agency / Road freight
@@ -48,6 +58,7 @@ export const companyConfig = {
     accountNumber: "000000000000",
     ifsc: "SBIN0000000",
     branch: "Patna Main",
+    upiId: "1stompackers@sbi",
   },
   upi: {
     id: "1stompackers@sbi",

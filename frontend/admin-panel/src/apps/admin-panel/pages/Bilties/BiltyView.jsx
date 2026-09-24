@@ -10,13 +10,34 @@ import {
   FileText,
 } from "lucide-react";
 import { useGetBiltyByIdQuery } from "../../../../store/apiSlices/biltiesApiSlice";
-import { companyConfig } from "../../../../configs/company.config";
+import { useGetSettingsQuery } from "../../../../store/apiSlices/settingsApiSlice";
 
 const BiltyView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const { data: bilty, isLoading: loading } = useGetBiltyByIdQuery(id);
+  const { data: dbSettings } = useGetSettingsQuery();
+  const company = dbSettings || {};
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === "CURRENT_TIMESTAMP" || dateStr === "null" || dateStr === "undefined") {
+      return "—";
+    }
+    try {
+      const s = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T") + "Z";
+      const d = new Date(s);
+      return isNaN(d.getTime())
+        ? (dateStr.length > 20 ? "—" : dateStr)
+        : d.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+    } catch {
+      return "—";
+    }
+  };
 
   if (loading) {
     return <div className="text-center py-12 text-slate-400 text-sm">Loading consignment note...</div>;
@@ -26,7 +47,7 @@ const BiltyView = () => {
     return <div className="text-center py-12 text-rose-500 text-sm">Bilty not found.</div>;
   }
 
-  const whatsAppMessage = `*Official Consignment Note (LR/Bilty) from ${companyConfig.name}*
+  const whatsAppMessage = `*Official Consignment Note (LR/Bilty) from ${company.name || "1st Om Packers and Movers"}*
 LR No: ${bilty.lrNumber}
 Truck No: ${bilty.truckNumber}
 Driver: ${bilty.driverName} (${bilty.driverPhone || "N/A"})
@@ -35,7 +56,7 @@ Packages: ${bilty.packagesCount} units
 Freight: ₹${bilty.freightAmount.toLocaleString("en-IN")} (${bilty.freightStatus.toUpperCase()})
 Risk: ${bilty.riskType.toUpperCase().replace("_", " ")}
 -----------------------------
-Emergency Transport Helpline: ${companyConfig.phone}`;
+Emergency Transport Helpline: ${company.phone || "+91 7033488691"}`;
 
   return (
     <div className="space-y-6 pb-10">
@@ -77,13 +98,18 @@ Emergency Transport Helpline: ${companyConfig.phone}`;
         {/* LR Top Header */}
         <div className="border-b-2 border-slate-800 pb-4 flex flex-col sm:flex-row justify-between items-start gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <div className="bg-slate-900 text-amber-400 p-2 rounded-xl">
-                <Truck className="w-6 h-6" />
-              </div>
+            <div className="flex items-center gap-3">
+              <img
+                src={company.logo?.primary || "/images/primary-logo.webp"}
+                alt={company.name || "Company Logo"}
+                className="h-12 w-auto object-contain max-w-40"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
               <div>
                 <h1 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight">
-                  {companyConfig.name}
+                  {company.name || "1st Om Packers and Movers"}
                 </h1>
                 <p className="text-[11px] font-semibold text-slate-600">
                   GOVT. REGD. PACKERS & HIGHWAY TRANSPORT CONTRACTORS
@@ -91,10 +117,10 @@ Emergency Transport Helpline: ${companyConfig.phone}`;
               </div>
             </div>
             <p className="text-xs text-slate-600 mt-1">
-              Head Office: {companyConfig.headOffice.address}, {companyConfig.headOffice.city}, {companyConfig.headOffice.state}
+              Head Office: {company.headOffice?.address ? `${company.headOffice.address}, ${company.headOffice.city}, ${company.headOffice.state}` : "Ram Krishna Nagar, Patna, Bihar"}
             </p>
             <p className="text-xs font-semibold text-slate-800">
-              GSTIN: {companyConfig.gstin} | Helpline: {companyConfig.phone}
+              GSTIN: {company.gstin || "N/A"} | Helpline: {company.phone || "+91 7033488691"}
             </p>
           </div>
 
@@ -104,7 +130,7 @@ Emergency Transport Helpline: ${companyConfig.phone}`;
             </span>
             <p className="text-base font-black font-mono text-blue-900">{bilty.lrNumber}</p>
             <p className="text-xs text-slate-700 font-semibold">
-              Date: {new Date(bilty.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+              Date: {formatDate(bilty.createdAt)}
             </p>
           </div>
         </div>
@@ -191,7 +217,12 @@ Emergency Transport Helpline: ${companyConfig.phone}`;
           <div className="text-[10px] text-slate-500 space-y-0.5 border-t border-slate-200 pt-2">
             <p className="font-bold text-slate-700">NOTICE & CONDITIONS:</p>
             <ul className="list-disc pl-4 space-y-0.5">
-              {companyConfig.terms.bilty.map((term, i) => (
+              {(company.terms?.bilty || [
+                "Consignment is carried strictly under Carrier by Road Act.",
+                "Goods carried at Owner's risk unless Transit Insurance receipt is attached.",
+                "Consignee must inspect all packages at delivery before signing receipt.",
+                "No claims entertained after delivery verification is signed."
+              ]).map((term, i) => (
                 <li key={i}>{term}</li>
               ))}
             </ul>
@@ -205,7 +236,7 @@ Emergency Transport Helpline: ${companyConfig.phone}`;
               Driver Signature
             </div>
             <div className="border-t border-slate-400 pt-1">
-              For {companyConfig.name}
+              For {company.name || "1st Om Packers and Movers"}
             </div>
           </div>
         </div>

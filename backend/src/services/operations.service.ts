@@ -69,6 +69,7 @@ export const createVehicle = async (env: Bindings, data: any) => {
       fitnessExpiry: data.fitnessExpiry || null,
       permitExpiry: data.permitExpiry || null,
       notes: data.notes || null,
+      createdAt: new Date().toISOString(),
     })
     .returning();
   return inserted[0];
@@ -153,6 +154,7 @@ export const createStaff = async (env: Bindings, data: any) => {
       dailyWage: data.dailyWage ? Number(data.dailyWage) : null,
       joiningDate: data.joiningDate || null,
       notes: data.notes || null,
+      createdAt: new Date().toISOString(),
     })
     .returning();
   return inserted[0];
@@ -270,6 +272,7 @@ export const assignVehiclesToJob = async (
         driverName: item.driverName || null,
         driverPhone: item.driverPhone || null,
         role: item.role || "primary",
+        createdAt: new Date().toISOString(),
       });
       // Optionally update vehicle status to on_move
       await db.update(vehicles).set({ status: "on_move" }).where(eq(vehicles.id, item.vehicleId));
@@ -334,6 +337,7 @@ export const assignStaffToJob = async (
         amountPayable,
         amountPaid: 0,
         paymentStatus: "pending",
+        createdAt: new Date().toISOString(),
       });
       // Optionally update staff status to on_move
       await db.update(staff).set({ status: "on_move" }).where(eq(staff.id, item.staffId));
@@ -424,6 +428,7 @@ export const addJobExpense = async (env: Bindings, jobId: number, data: any) => 
       description: data.description || null,
       paidBy: data.paidBy || null,
       receiptNote: data.receiptNote || null,
+      createdAt: new Date().toISOString(),
     })
     .returning();
   return inserted[0];

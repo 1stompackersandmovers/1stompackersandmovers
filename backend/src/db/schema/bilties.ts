@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { jobs } from "./jobs";
 
 export const bilties = sqliteTable("bilties", {
@@ -27,7 +28,7 @@ export const bilties = sqliteTable("bilties", {
     .default("owner_risk")
     .notNull(),
   createdAt: text("created_at")
-    .default("CURRENT_TIMESTAMP")
+    .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
 

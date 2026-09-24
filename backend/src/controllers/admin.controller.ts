@@ -21,6 +21,8 @@ import {
   getAllQuotations,
   getQuotationById,
   updateQuotationStatus,
+  updateQuotation,
+  deleteQuotation,
   createJob,
   getAllJobs,
   getJobById,
@@ -84,14 +86,16 @@ function maskEmail(email?: string | null): string {
 
 export const handleAdminLogin = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const { username, password } = await c.req.json();
-    if (!username || !password) {
-      return c.json({ error: "Username and password are required" }, 400);
+    const body = await c.req.json();
+    const identifier = (body.username || body.identifier || body.email || "").trim();
+    const password = body.password;
+    if (!identifier || !password) {
+      return c.json({ error: "Username or email and password are required" }, 400);
     }
 
-    const admin = await verifyAdminLogin(c.env, username, password);
+    const admin = await verifyAdminLogin(c.env, identifier, password);
     if (!admin) {
-      return c.json({ error: "Invalid username or password" }, 401);
+      return c.json({ error: "Invalid username/email or password" }, 401);
     }
 
     const secret = getJwtSecret(c.env);
@@ -99,7 +103,7 @@ export const handleAdminLogin = async (c: Context<{ Bindings: Bindings }>) => {
     // If Two-Factor Authentication is enabled AND email is set
     if (admin.twoFactorEnabled && admin.email) {
       const otp = await generateAndStoreOtp(c.env, admin.id, "2FA Login Verification");
-      await sendOtpEmail(admin.email, otp, "2FA Login Verification", c.env.BREVO_API_KEY);
+      await sendOtpEmail(admin.email, otp, "2FA Login Verification", c.env.BREVO_API_KEY, c.env.BREVO_SENDER_EMAIL);
 
       // Create short-lived 10-minute challenge token
       const exp = Math.floor(Date.now() / 1000) + 600;
@@ -202,7 +206,7 @@ export const handleResend2FAOtp = async (c: Context<{ Bindings: Bindings }>) => 
     }
 
     const otp = await generateAndStoreOtp(c.env, admin.id, "2FA Login Verification");
-    await sendOtpEmail(admin.email, otp, "2FA Login Verification", c.env.BREVO_API_KEY);
+    await sendOtpEmail(admin.email, otp, "2FA Login Verification", c.env.BREVO_API_KEY, c.env.BREVO_SENDER_EMAIL);
     return c.json({ success: true, message: `New verification code sent to ${maskEmail(admin.email)}` });
   } catch (err: any) {
     return c.json({ error: "Failed to resend OTP" }, 500);
@@ -218,14 +222,14 @@ export const handleForgotPasswordRequestOtp = async (c: Context<{ Bindings: Bind
     if (!admin || !admin.email) {
       return c.json(
         {
-          error: "No administrator account with a registered email address was found with that username or email.",
+          error: "No account with a registered email address was found with that username or email.",
         },
         404
       );
     }
 
     const otp = await generateAndStoreOtp(c.env, admin.id, "Password Reset");
-    await sendOtpEmail(admin.email, otp, "Password Reset", c.env.BREVO_API_KEY);
+    await sendOtpEmail(admin.email, otp, "Password Reset", c.env.BREVO_API_KEY, c.env.BREVO_SENDER_EMAIL);
 
     const secret = getJwtSecret(c.env);
     const exp = Math.floor(Date.now() / 1000) + 600;
@@ -515,7 +519,7 @@ export const handleCreateQuotation = async (c: Context<{ Bindings: Bindings }>) 
 export const handleGetQuotations = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const list = await getAllQuotations(c.env);
-    return c.json({ quotations: list });
+    return c.json({ quotes: list });
   } catch (err) {
     console.error("Get quotations error:", err);
     return c.json({ error: "Failed to fetch quotations" }, 500);
@@ -541,6 +545,30 @@ export const handleUpdateQuotationStatus = async (c: Context<{ Bindings: Binding
     return c.json({ success: true, quote: updated });
   } catch (err) {
     return c.json({ error: "Failed to update quotation" }, 500);
+  }
+};
+
+export const handleUpdateQuotation = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const id = parseInt(c.req.param("id") ?? "", 10);
+    const body = await c.req.json();
+    const updated = await updateQuotation(c.env, id, body);
+    if (!updated) return c.json({ error: "Quotation not found" }, 404);
+    return c.json({ success: true, quote: updated });
+  } catch (err) {
+    console.error("Update quotation error:", err);
+    return c.json({ error: "Failed to update quotation" }, 500);
+  }
+};
+
+export const handleDeleteQuotation = async (c: Context<{ Bindings: Bindings }>) => {
+  try {
+    const id = parseInt(c.req.param("id") ?? "", 10);
+    await deleteQuotation(c.env, id);
+    return c.json({ success: true });
+  } catch (err) {
+    console.error("Delete quotation error:", err);
+    return c.json({ error: "Failed to delete quotation" }, 500);
   }
 };
 

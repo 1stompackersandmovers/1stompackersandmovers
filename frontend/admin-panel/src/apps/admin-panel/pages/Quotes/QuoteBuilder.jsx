@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router";
 import {
   ArrowLeft,
   Plus,
@@ -13,10 +13,18 @@ import {
   AlertCircle,
   UserCheck,
   Loader2,
+  Calendar,
+  Edit3,
 } from "lucide-react";
-import { useCreateQuoteMutation } from "../../../../store/apiSlices/quotesApiSlice";
-import { useUpdateLeadMutation } from "../../../../store/apiSlices/leadsApiSlice";
-import { companyConfig } from "../../../../configs/company.config";
+import {
+  useCreateQuoteMutation,
+  useUpdateQuoteMutation,
+  useGetQuoteByIdQuery,
+} from "../../../../store/apiSlices/quotesApiSlice";
+import {
+  useGetLeadsQuery,
+  useUpdateLeadMutation,
+} from "../../../../store/apiSlices/leadsApiSlice";
 import { FormField } from "../../../../components/FormField";
 import { useUnsavedChanges } from "../../../../hooks/useUnsavedChanges";
 
@@ -39,16 +47,26 @@ const COMMON_ITEMS = [
 ];
 
 const QuoteBuilder = () => {
+  const { id } = useParams();
+  const isEditMode = Boolean(id);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isDirty, setIsDirty, confirmNavigation, UnsavedModal } = useUnsavedChanges(navigate);
 
-  const [leadId] = useState(searchParams.get("leadId") || "");
+  const { data: existingQuote, isLoading: loadingExisting } = useGetQuoteByIdQuery(id, { skip: !id });
+  const { data: leads = [] } = useGetLeadsQuery();
+
+  const [leadId, setLeadId] = useState(searchParams.get("leadId") || "");
   const [customerName, setCustomerName] = useState(searchParams.get("name") || "");
   const [customerPhone, setCustomerPhone] = useState(searchParams.get("phone") || "");
   const [movingFrom, setMovingFrom] = useState(searchParams.get("from") || "");
   const [movingTo, setMovingTo] = useState(searchParams.get("to") || "");
   const [moveDate, setMoveDate] = useState("");
+
+  // Lead context info (read-only, from lead)
+  const [leadService, setLeadService] = useState(searchParams.get("service") || "");
+  const [leadMoveType, setLeadMoveType] = useState(searchParams.get("moveType") || "");
+  const [leadTimeline, setLeadTimeline] = useState(searchParams.get("timeline") || "");
 
   // Inventory
   const [selectedItems, setSelectedItems] = useState([]);
@@ -74,7 +92,66 @@ const QuoteBuilder = () => {
   const [submitError, setSubmitError] = useState("");
 
   const [createQuote, { isLoading: saving }] = useCreateQuoteMutation();
+  const [updateQuote, { isLoading: updating }] = useUpdateQuoteMutation();
   const [updateLead] = useUpdateLeadMutation();
+
+  // Populate data when in edit mode
+  useEffect(() => {
+    if (existingQuote) {
+      setLeadId(existingQuote.leadId || "");
+      setCustomerName(existingQuote.customerName || "");
+      setCustomerPhone(existingQuote.customerPhone || "");
+      setMovingFrom(existingQuote.movingFrom || "");
+      setMovingTo(existingQuote.movingTo || "");
+      setMoveDate(existingQuote.moveDate || "");
+      setPackagingCharges(existingQuote.packagingCharges || 0);
+      setTransportCharges(existingQuote.transportCharges || 0);
+      setLoadingCharges(existingQuote.loadingCharges || 0);
+      setUnloadingCharges(existingQuote.unloadingCharges || 0);
+      setInsuranceDeclaredValue(existingQuote.insuranceDeclaredValue || 0);
+      setInsuranceRatePercent(existingQuote.insuranceRatePercent || 0);
+      setOtherCharges(existingQuote.otherCharges || 0);
+      setDiscount(existingQuote.discount || 0);
+      setGstRate(existingQuote.gstRate || 0);
+
+      if (existingQuote.inventoryData) {
+        try {
+          const parsed = JSON.parse(existingQuote.inventoryData);
+          if (Array.isArray(parsed)) setSelectedItems(parsed);
+        } catch (e) {
+          console.error("Error parsing existing quote inventory:", e);
+        }
+      }
+
+      if (existingQuote.lead) {
+        setLeadService(existingQuote.lead.service || "");
+        setLeadMoveType(existingQuote.lead.moveType || "");
+        setLeadTimeline(existingQuote.lead.timeline || "");
+      }
+    }
+  }, [existingQuote]);
+
+  const handleSelectLead = (selectedId) => {
+    setIsDirty(true);
+    if (!selectedId) {
+      setLeadId("");
+      return;
+    }
+    const found = leads.find((l) => l.id === Number(selectedId));
+    if (found) {
+      setLeadId(found.id);
+      setCustomerName(found.name || "");
+      setCustomerPhone(found.phone || "");
+      setMovingFrom(found.movingFrom || "");
+      setMovingTo(found.movingTo || "");
+      setLeadService(found.service || "");
+      setLeadMoveType(found.moveType || "");
+      setLeadTimeline(found.timeline || "");
+      if (found.timeline && !moveDate) {
+        setMoveDate(found.timeline);
+      }
+    }
+  };
 
   const handleFieldChange = (setter) => (e) => {
     setIsDirty(true);
@@ -189,21 +266,28 @@ const QuoteBuilder = () => {
         totalAmount,
       };
 
-      const res = await createQuote(payload).unwrap();
+      let resQuoteId;
+      if (isEditMode) {
+        await updateQuote({ id: Number(id), ...payload }).unwrap();
+        resQuoteId = id;
+      } else {
+        const res = await createQuote(payload).unwrap();
+        resQuoteId = res.quote.id;
 
-      // Automatically update lead status to converted if leadId was provided
-      if (leadId) {
-        try {
-          await updateLead({ id: Number(leadId), status: "converted" }).unwrap();
-        } catch (e) {
-          console.error("Failed to auto-update lead status:", e);
+        // Automatically update lead status to converted if leadId was provided
+        if (leadId) {
+          try {
+            await updateLead({ id: Number(leadId), status: "converted" }).unwrap();
+          } catch (e) {
+            console.error("Failed to auto-update lead status:", e);
+          }
         }
       }
 
       setIsDirty(false);
-      navigate(`/quotes/${res.quote.id}`);
+      navigate(`/quotes/${resQuoteId}`);
     } catch (err) {
-      setSubmitError(err.data?.error || err.message || "Failed to create quotation");
+      setSubmitError(err.data?.error || err.message || (isEditMode ? "Failed to update quotation" : "Failed to create quotation"));
     }
   };
 
@@ -216,15 +300,19 @@ const QuoteBuilder = () => {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => confirmNavigation(leadId ? `/leads/${leadId}` : "/quotes")}
+            onClick={() => confirmNavigation(isEditMode ? `/quotes/${id}` : (leadId ? `/leads/${leadId}` : "/quotes"))}
             className="p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Create Quotation</h2>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+              {isEditMode ? `Edit Quotation #${existingQuote?.quoteNumber || id}` : "Create Quotation"}
+            </h2>
             <p className="text-xs text-slate-500">
-              Estimate builder with inventory calculation & GST breakdown
+              {isEditMode
+                ? "Modify inventory items, prices, route, and target moving schedule"
+                : "Estimate builder with inventory calculation & GST breakdown"}
             </p>
           </div>
         </div>
@@ -252,6 +340,31 @@ const QuoteBuilder = () => {
           <button onClick={() => setSubmitError("")} className="text-rose-500 hover:text-rose-700 font-bold">×</button>
         </div>
       )}
+
+      {/* Lead Selector Card */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+            <UserCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-xs font-bold text-slate-900 block">Customer Lead Linkage</span>
+            <p className="text-[11px] text-slate-500">Attach an inquiry lead or select from recent customers</p>
+          </div>
+        </div>
+        <select
+          value={leadId || ""}
+          onChange={(e) => handleSelectLead(e.target.value)}
+          className="px-3.5 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:bg-white focus:border-blue-500 outline-none max-w-md w-full cursor-pointer"
+        >
+          <option value="">-- Standalone Quote (No Lead Attached) --</option>
+          {leads.map((l) => (
+            <option key={l.id} value={l.id}>
+              Lead #{l.id}: {l.name} ({l.phone}) • {l.movingFrom} ➔ {l.movingTo} [{l.status}]
+            </option>
+          ))}
+        </select>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Customer & Route Details Card */}
@@ -303,15 +416,75 @@ const QuoteBuilder = () => {
               />
             </FormField>
 
-            <FormField label="Expected Moving Date" required error={errors.moveDate}>
-              <input
-                type="date"
-                value={moveDate}
-                onChange={handleFieldChange(setMoveDate)}
-                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-              />
+            <FormField
+              label="Expected Moving Date / Target Schedule"
+              required
+              error={errors.moveDate}
+              helperText="Calendar date or flexible timeline given by customer"
+            >
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={moveDate}
+                    onChange={handleFieldChange(setMoveDate)}
+                    placeholder="e.g. 2026-10-15 or Urgent (within 2-3 days)"
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  />
+                  <input
+                    type="date"
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setIsDirty(true);
+                        setMoveDate(e.target.value);
+                      }
+                    }}
+                    className="px-2.5 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 hover:bg-slate-100 cursor-pointer text-slate-600"
+                    title="Select date from calendar"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1.5 text-[10px]">
+                  {["Urgent (within 2 to 3 days)", "Within this week", "Next week", "End of this month"].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        setIsDirty(true);
+                        setMoveDate(preset);
+                      }}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors cursor-pointer"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </FormField>
           </div>
+
+          {/* Lead Service Context (read-only) */}
+          {(leadService || leadMoveType || leadTimeline) && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100 text-xs">
+              {leadService && (
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-blue-400 block mb-0.5">Service Type</span>
+                  <span className="font-semibold text-blue-900">{leadService}</span>
+                </div>
+              )}
+              {leadMoveType && (
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-blue-400 block mb-0.5">Move Type</span>
+                  <span className="font-semibold text-blue-900">{leadMoveType}</span>
+                </div>
+              )}
+              {leadTimeline && (
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-blue-400 block mb-0.5">Timeline</span>
+                  <span className="font-semibold text-blue-900">{leadTimeline}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Inventory Selection Card */}
@@ -530,18 +703,18 @@ const QuoteBuilder = () => {
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || updating}
           className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md shadow-blue-500/20 transition-all active:scale-[0.99] disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
         >
-          {saving ? (
+          {saving || updating ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Generating Quotation...</span>
+              <span>{isEditMode ? "Updating Quotation..." : "Generating Quotation..."}</span>
             </>
           ) : (
             <>
-              <Calculator className="w-4 h-4" />
-              <span>Generate & Preview Formal Quote</span>
+              {isEditMode ? <Edit3 className="w-4 h-4" /> : <Calculator className="w-4 h-4" />}
+              <span>{isEditMode ? "Save Changes to Quotation" : "Generate & Preview Formal Quote"}</span>
             </>
           )}
         </button>

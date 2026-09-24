@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router";
 import { ArrowLeft, Receipt, Building2, Calculator, ShieldCheck, AlertCircle, Loader2, Truck } from "lucide-react";
 import { useCreateInvoiceMutation } from "../../../../store/apiSlices/invoicesApiSlice";
 import { useGetJobByIdQuery } from "../../../../store/apiSlices/jobsApiSlice";
-import { companyConfig } from "../../../../configs/company.config";
+import { useGetSettingsQuery } from "../../../../store/apiSlices/settingsApiSlice";
 import { FormField } from "../../../../components/FormField";
 import { useUnsavedChanges } from "../../../../hooks/useUnsavedChanges";
 
@@ -14,13 +14,20 @@ const InvoiceBuilder = () => {
 
   const jobId = searchParams.get("jobId") || "";
   const { data: job } = useGetJobByIdQuery(jobId, { skip: !jobId });
+  const { data: dbSettings } = useGetSettingsQuery();
 
   const [customerName, setCustomerName] = useState(searchParams.get("name") || "");
   const [customerPhone, setCustomerPhone] = useState(searchParams.get("phone") || "");
   const [customerGstin, setCustomerGstin] = useState("");
   const [pickupAddress, setPickupAddress] = useState(searchParams.get("pickup") || "");
   const [deliveryAddress, setDeliveryAddress] = useState(searchParams.get("delivery") || "");
-  const [sacCode, setSacCode] = useState(companyConfig.sacCode || "9965");
+  const [sacCode, setSacCode] = useState("9965");
+
+  useEffect(() => {
+    if (dbSettings?.sacCode) {
+      setSacCode(dbSettings.sacCode);
+    }
+  }, [dbSettings]);
 
   const [subtotal, setSubtotal] = useState(15000);
   const [gstRate, setGstRate] = useState(18); // 0, 5, 18

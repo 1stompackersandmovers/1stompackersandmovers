@@ -13,15 +13,36 @@ import {
   XCircle,
   IndianRupee,
   X,
+  Edit2,
 } from "lucide-react";
 import { useGetQuotesQuery } from "../../../../store/apiSlices/quotesApiSlice";
+import { CardGridSkeleton } from "../../shared/components/Skeleton";
 
 const QuotesList = () => {
-  const { data: quotes = [], isLoading: loading, refetch: fetchQuotes } =
+  const { data: quotes = [], isLoading, isFetching, refetch: fetchQuotes } =
     useGetQuotesQuery();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === "CURRENT_TIMESTAMP" || dateStr === "null" || dateStr === "undefined") {
+      return "—";
+    }
+    try {
+      const s = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T") + "Z";
+      const d = new Date(s);
+      return isNaN(d.getTime())
+        ? (dateStr.length > 20 ? "—" : dateStr)
+        : d.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+    } catch {
+      return "—";
+    }
+  };
 
   const filteredQuotes = quotes.filter((q) => {
     const s = searchQuery.toLowerCase();
@@ -100,7 +121,7 @@ const QuotesList = () => {
             className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 bg-slate-50 border border-slate-200/80 rounded-xl transition-all cursor-pointer text-xs font-medium"
             title="Refresh quotations"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RotateCcw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin text-blue-600" : ""}`} />
             <span>Sync</span>
           </button>
           <button
@@ -220,11 +241,8 @@ const QuotesList = () => {
       </div>
 
       {/* Quotations Grid */}
-      {loading ? (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
-          <RotateCcw className="w-6 h-6 animate-spin text-blue-600 mx-auto" />
-          <p className="text-sm font-semibold text-slate-700">Loading quotations...</p>
-        </div>
+      {isLoading || isFetching ? (
+        <CardGridSkeleton count={6} />
       ) : filteredQuotes.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
           <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
@@ -283,17 +301,25 @@ const QuotesList = () => {
 
               <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 text-xs text-slate-500">
                 <span className="text-[11px]">
-                  Issued:{" "}
-                  {new Date(quote.createdAt).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
+                  Issued: {formatDate(quote.createdAt)}
                 </span>
-                <span className="text-blue-600 font-semibold group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-[11px]">
-                  <span>View Details</span>
-                  <ArrowRight className="w-3 h-3" />
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/quotes/${quote.id}/edit`);
+                    }}
+                    className="p-1 hover:text-blue-600 hover:bg-blue-50 rounded-lg text-slate-400 transition-colors"
+                    title="Edit Quote"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-blue-600 font-semibold group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-[11px]">
+                    <span>View Details</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </span>
+                </div>
               </div>
             </div>
           ))}

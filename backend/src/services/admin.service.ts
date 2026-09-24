@@ -60,10 +60,19 @@ export const getFirstAdmin = async (env: Bindings) => {
 export const getAdminByEmailOrUsername = async (env: Bindings, identifier: string) => {
   await ensureAdminColumns(env);
   const db = getDb(env.DB);
+  const trimmed = identifier.trim();
+  const lower = trimmed.toLowerCase();
   const result = await db
     .select()
     .from(admins)
-    .where(or(eq(admins.username, identifier), eq(admins.email, identifier)))
+    .where(
+      or(
+        eq(admins.username, trimmed),
+        eq(admins.email, trimmed),
+        eq(admins.username, lower),
+        eq(admins.email, lower)
+      )
+    )
     .limit(1);
   return result[0] || null;
 };
@@ -97,9 +106,9 @@ export const createAdminUser = async (
   return inserted[0];
 };
 
-export const verifyAdminLogin = async (env: Bindings, username: string, passwordPlain: string) => {
+export const verifyAdminLogin = async (env: Bindings, identifier: string, passwordPlain: string) => {
   await ensureAdminColumns(env);
-  const admin = await getAdminByUsername(env, username);
+  const admin = await getAdminByEmailOrUsername(env, identifier);
   if (!admin) return null;
 
   const isValid = await verifyPassword(passwordPlain, admin.passwordHash, admin.salt);
@@ -291,6 +300,7 @@ export const createManualLead = async (
       email: data.email || null,
       notes: data.notes || "Added manually by admin",
       status: "new",
+      createdAt: new Date().toISOString(),
     })
     .returning();
   return inserted[0];
@@ -357,6 +367,7 @@ export const createQuotation = async (
       totalAmount: data.totalAmount,
       validUntil: data.validUntil || null,
       status: "sent",
+      createdAt: new Date().toISOString(),
     })
     .returning();
 
@@ -379,7 +390,13 @@ export const getAllQuotations = async (env: Bindings) => {
 export const getQuotationById = async (env: Bindings, id: number) => {
   const db = getDb(env.DB);
   const result = await db.select().from(quotations).where(eq(quotations.id, id)).limit(1);
-  return result[0] || null;
+  if (!result[0]) return null;
+  const quote: any = { ...result[0] };
+  if (quote.leadId) {
+    const leadRes = await db.select().from(leads).where(eq(leads.id, quote.leadId)).limit(1);
+    quote.lead = leadRes[0] || null;
+  }
+  return quote;
 };
 
 export const updateQuotationStatus = async (
@@ -394,6 +411,22 @@ export const updateQuotationStatus = async (
     .where(eq(quotations.id, id))
     .returning();
   return updated[0];
+};
+
+export const updateQuotation = async (env: Bindings, id: number, data: Partial<typeof quotations.$inferInsert>) => {
+  const db = getDb(env.DB);
+  const updated = await db
+    .update(quotations)
+    .set(data)
+    .where(eq(quotations.id, id))
+    .returning();
+  return updated[0];
+};
+
+export const deleteQuotation = async (env: Bindings, id: number) => {
+  const db = getDb(env.DB);
+  await db.delete(quotations).where(eq(quotations.id, id));
+  return true;
 };
 
 // ================= JOBS ================= //
@@ -437,6 +470,7 @@ export const createJob = async (
       crewMembers: data.crewMembers || null,
       specialNotes: data.specialNotes || null,
       status: "scheduled",
+      createdAt: new Date().toISOString(),
     })
     .returning();
 
@@ -540,6 +574,7 @@ export const createInvoice = async (
       balanceDue: data.balanceDue,
       paymentStatus,
       paymentMode: data.paymentMode || null,
+      createdAt: new Date().toISOString(),
     })
     .returning();
 
@@ -635,6 +670,7 @@ export const createBilty = async (
       freightAmount: data.freightAmount || 0,
       freightStatus: data.freightStatus || "to_pay",
       riskType: data.riskType || "owner_risk",
+      createdAt: new Date().toISOString(),
     })
     .returning();
 
@@ -678,7 +714,69 @@ export const getCompanySettings = async (env: Bindings) => {
     .where(eq(companySettings.key, "company_config"))
     .limit(1);
 
-  if (!result[0]) return null;
+  if (!result[0]) {
+    const defaultData = {
+      name: "1st Om Packers and Movers",
+      shortName: "1st Om",
+      tagline: "Safer Moves, Brighter Tomorrows",
+      phone: "+91 7033488691",
+      whatsapp: "+91 7033488691",
+      email: "hello@1stompackersandmovers.com",
+      website: "https://1stompackersandmovers.com",
+      gstin: "20XXXXX0000X1Z5",
+      pan: "XXXXX0000X",
+      sacCode: "9965",
+      headOffice: {
+        address: "Ram Krishna Nagar, Soranpur, Goraiya Asthan",
+        city: "Patna",
+        state: "Bihar",
+        pincode: "800027",
+        phone: "+91 7033488691",
+      },
+      upi: {
+        id: "1stompackers@sbi",
+        payeeName: "1st Om Packers and Movers",
+      },
+      bankDetails: {
+        accountName: "1ST OM PACKERS AND MOVERS",
+        bankName: "State Bank of India",
+        accountNumber: "000000000000",
+        ifsc: "SBIN0000000",
+        branch: "Patna Main",
+      },
+      terms: {
+        quotation: [
+          "Quotation is valid for 15 days from the date of issue.",
+          "Toll tax, octroi, parking & state entry tax will be charged as actual if applicable.",
+          "Transit Insurance will be charged extra at 3% on declared goods value.",
+          "Payment terms: 50% advance at the time of loading, 50% balance before unloading.",
+          "Packing materials remain company property unless explicitly purchased.",
+        ],
+        invoice: [
+          "Goods are accepted for transport subject to conditions printed on Consignment Note.",
+          "Payment should be made in favor of 1st Om Packers and Movers via UPI/Bank transfer.",
+          "Any dispute subject to Patna jurisdiction only.",
+        ],
+        bilty: [
+          "Consignment is carried strictly under Carrier by Road Act.",
+          "Goods carried at Owner's risk unless Transit Insurance receipt is attached.",
+          "Consignee must inspect all packages at delivery before signing receipt.",
+          "No claims entertained after delivery verification is signed.",
+        ],
+      },
+    };
+    try {
+      await db.insert(companySettings).values({
+        key: "company_config",
+        data: JSON.stringify(defaultData),
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error("Error auto-seeding company_settings:", e);
+    }
+    return defaultData;
+  }
+
   try {
     return JSON.parse(result[0].data);
   } catch {

@@ -11,6 +11,8 @@ import {
   handleGetQuotations,
   handleGetQuotationById,
   handleUpdateQuotationStatus,
+  handleUpdateQuotation,
+  handleDeleteQuotation,
   handleCreateJob,
   handleGetJobs,
   handleGetJobById,
@@ -63,12 +65,13 @@ import { Bindings } from "../types";
 
 export const adminRouter = new Hono<{ Bindings: Bindings }>();
 
-// Public Auth routes
+// Public Auth & Brand settings routes
 adminRouter.post("/auth/login", handleAdminLogin);
 adminRouter.post("/auth/verify-2fa", handleVerify2FA);
 adminRouter.post("/auth/resend-2fa-otp", handleResend2FAOtp);
 adminRouter.post("/auth/forgot-password/request-otp", handleForgotPasswordRequestOtp);
 adminRouter.post("/auth/forgot-password/reset", handleForgotPasswordReset);
+adminRouter.get("/settings", handleGetSettings);
 
 // Protected routes (require Bearer JWT)
 adminRouter.use("*", authMiddleware);
@@ -92,7 +95,9 @@ adminRouter.patch("/leads/:id", handleUpdateLead);
 adminRouter.get("/quotes", handleGetQuotations);
 adminRouter.post("/quotes", handleCreateQuotation);
 adminRouter.get("/quotes/:id", handleGetQuotationById);
+adminRouter.put("/quotes/:id", handleUpdateQuotation);
 adminRouter.patch("/quotes/:id/status", handleUpdateQuotationStatus);
+adminRouter.delete("/quotes/:id", handleDeleteQuotation);
 
 // Jobs & Operations
 adminRouter.get("/jobs", handleGetJobs);
@@ -142,6 +147,5 @@ adminRouter.get("/finance/monthly", handleGetMonthlyRevenue);
 adminRouter.get("/finance/top-routes", handleGetTopRoutes);
 adminRouter.get("/finance/pending-payroll", handleGetPendingPayroll);
 
-// Settings
-adminRouter.get("/settings", handleGetSettings);
+// Settings (Protected)
 adminRouter.put("/settings", handleUpdateSettings);

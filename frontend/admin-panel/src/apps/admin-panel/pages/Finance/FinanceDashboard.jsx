@@ -24,13 +24,14 @@ import {
 } from "../../../../store/apiSlices/financeApiSlice";
 import { useUpdateStaffPaymentMutation } from "../../../../store/apiSlices/jobsApiSlice";
 import { FormField } from "../../../../components/FormField";
+import { KpiGridSkeleton } from "../../shared/components/Skeleton";
 
 const FinanceDashboard = () => {
-  const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } =
+  const { data: summary, isLoading: summaryLoading, isFetching: summaryFetching, refetch: refetchSummary } =
     useGetFinanceSummaryQuery();
   const { data: monthly = [], isLoading: monthlyLoading } = useGetMonthlyRevenueQuery();
   const { data: topRoutes = [], isLoading: routesLoading } = useGetTopRoutesQuery();
-  const { data: pendingPayroll = [], isLoading: payrollLoading, refetch: refetchPayroll } =
+  const { data: pendingPayroll = [], isLoading: payrollLoading, isFetching: payrollFetching, refetch: refetchPayroll } =
     useGetPendingPayrollQuery();
 
   const [updateStaffPayment, { isLoading: paying }] = useUpdateStaffPaymentMutation();
@@ -95,62 +96,66 @@ const FinanceDashboard = () => {
             className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-emerald-600 bg-slate-50 border border-slate-200/80 rounded-xl transition-all cursor-pointer text-xs font-medium"
             title="Refresh financial data"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${summaryLoading ? "animate-spin" : ""}`} />
+            <RotateCcw className={`w-3.5 h-3.5 ${summaryFetching || payrollFetching ? "animate-spin text-emerald-600" : ""}`} />
             <span>Sync Accounts</span>
           </button>
         </div>
       </div>
 
       {/* 4 Financial KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Total Billed</span>
-            <Receipt className="w-4 h-4 text-blue-600" />
+      {summaryLoading ? (
+        <KpiGridSkeleton />
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Total Billed</span>
+              <Receipt className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="text-2xl font-black text-slate-900 font-mono">
+              ₹{(summary?.totalRevenue || 0).toLocaleString("en-IN")}
+            </div>
+            <p className="text-[11px] text-slate-400">
+              This Month: <strong>₹{(summary?.thisMonthRevenue || 0).toLocaleString("en-IN")}</strong>
+            </p>
           </div>
-          <div className="text-2xl font-black text-slate-900 font-mono">
-            ₹{(summary?.totalRevenue || 0).toLocaleString("en-IN")}
-          </div>
-          <p className="text-[11px] text-slate-400">
-            This Month: <strong>₹{(summary?.thisMonthRevenue || 0).toLocaleString("en-IN")}</strong>
-          </p>
-        </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Collected Cash</span>
-            <CheckCircle className="w-4 h-4 text-emerald-600" />
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Collected Cash</span>
+              <CheckCircle className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div className="text-2xl font-black text-emerald-700 font-mono">
+              ₹{(summary?.totalCollected || 0).toLocaleString("en-IN")}
+            </div>
+            <p className="text-[11px] text-emerald-600 font-medium">Cleared customer receipts</p>
           </div>
-          <div className="text-2xl font-black text-emerald-700 font-mono">
-            ₹{(summary?.totalCollected || 0).toLocaleString("en-IN")}
-          </div>
-          <p className="text-[11px] text-emerald-600 font-medium">Cleared customer receipts</p>
-        </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Outstanding Due</span>
-            <AlertCircle className="w-4 h-4 text-amber-600" />
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Outstanding Due</span>
+              <AlertCircle className="w-4 h-4 text-amber-600" />
+            </div>
+            <div className="text-2xl font-black text-amber-600 font-mono">
+              ₹{(summary?.totalOutstanding || 0).toLocaleString("en-IN")}
+            </div>
+            <p className="text-[11px] text-slate-400">Pending customer balance</p>
           </div>
-          <div className="text-2xl font-black text-amber-600 font-mono">
-            ₹{(summary?.totalOutstanding || 0).toLocaleString("en-IN")}
-          </div>
-          <p className="text-[11px] text-slate-400">Pending customer balance</p>
-        </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700">Pending Wages</span>
-            <Users className="w-4 h-4 text-rose-500" />
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700">Pending Wages</span>
+              <Users className="w-4 h-4 text-rose-500" />
+            </div>
+            <div className="text-2xl font-black text-rose-600 font-mono">
+              ₹{(summary?.pendingStaffWages || 0).toLocaleString("en-IN")}
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Total Paid: <strong>₹{(summary?.totalStaffPaid || 0).toLocaleString("en-IN")}</strong>
+            </p>
           </div>
-          <div className="text-2xl font-black text-rose-600 font-mono">
-            ₹{(summary?.pendingStaffWages || 0).toLocaleString("en-IN")}
-          </div>
-          <p className="text-[11px] text-slate-400">
-            Total Paid: <strong>₹{(summary?.totalStaffPaid || 0).toLocaleString("en-IN")}</strong>
-          </p>
         </div>
-      </div>
+      )}
 
       {/* Monthly Revenue Visual Trend & Top Routes Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

@@ -19,13 +19,13 @@ import {
   AlertCircle,
   ChevronRight,
   ExternalLink,
+  Edit2,
 } from "lucide-react";
 import {
   useGetLeadByIdQuery,
   useGetLeadPipelineQuery,
   useUpdateLeadMutation,
 } from "../../../../store/apiSlices/leadsApiSlice";
-import { companyConfig } from "../../../../configs/company.config";
 
 const LeadDetail = () => {
   const { id } = useParams();
@@ -33,6 +33,19 @@ const LeadDetail = () => {
 
   const { data: pipelineData, isLoading: loading } = useGetLeadPipelineQuery(id);
   const [updateLead] = useUpdateLeadMutation();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === "CURRENT_TIMESTAMP" || dateStr === "null" || dateStr === "undefined") {
+      return "—";
+    }
+    try {
+      const s = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T") + "Z";
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? (dateStr.length > 20 ? "—" : dateStr) : d.toLocaleDateString("en-IN");
+    } catch {
+      return "—";
+    }
+  };
 
   const [notes, setNotes] = useState("");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -89,23 +102,53 @@ const LeadDetail = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() =>
-              navigate(
-                `/quotes/new?leadId=${lead.id}&name=${encodeURIComponent(
-                  lead.name
-                )}&phone=${encodeURIComponent(
-                  lead.phone
-                )}&from=${encodeURIComponent(
-                  lead.movingFrom
-                )}&to=${encodeURIComponent(lead.movingTo)}`
-              )
-            }
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs shadow-blue-500/20 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create New Quote</span>
-          </button>
+          {quotes.length > 0 ? (
+            <>
+              <Link
+                to={`/quotes/${quotes[0].id}`}
+                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs shadow-blue-500/20 transition-all cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>View / Edit Quote</span>
+              </Link>
+              <button
+                onClick={() =>
+                  navigate(
+                    `/quotes/new?leadId=${lead.id}&name=${encodeURIComponent(
+                      lead.name
+                    )}&phone=${encodeURIComponent(
+                      lead.phone
+                    )}&from=${encodeURIComponent(
+                      lead.movingFrom
+                    )}&to=${encodeURIComponent(lead.movingTo)}&service=${encodeURIComponent(lead.service || "")}&moveType=${encodeURIComponent(lead.moveType || "")}&timeline=${encodeURIComponent(lead.timeline || "")}`
+                  )
+                }
+                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2.5 rounded-xl transition-all cursor-pointer"
+                title="Create an alternative quotation for this customer"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Add Another Quote</span>
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() =>
+                navigate(
+                  `/quotes/new?leadId=${lead.id}&name=${encodeURIComponent(
+                    lead.name
+                  )}&phone=${encodeURIComponent(
+                    lead.phone
+                  )}&from=${encodeURIComponent(
+                    lead.movingFrom
+                  )}&to=${encodeURIComponent(lead.movingTo)}&service=${encodeURIComponent(lead.service || "")}&moveType=${encodeURIComponent(lead.moveType || "")}&timeline=${encodeURIComponent(lead.timeline || "")}`
+                )
+              }
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-xs shadow-blue-500/20 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Quote</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -265,7 +308,7 @@ const LeadDetail = () => {
                     lead.phone
                   )}&from=${encodeURIComponent(
                     lead.movingFrom
-                  )}&to=${encodeURIComponent(lead.movingTo)}`
+                  )}&to=${encodeURIComponent(lead.movingTo)}&service=${encodeURIComponent(lead.service || "")}&moveType=${encodeURIComponent(lead.moveType || "")}&timeline=${encodeURIComponent(lead.timeline || "")}`
                 )
               }
               className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer"
@@ -301,20 +344,28 @@ const LeadDetail = () => {
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-400">
-                        Created on {new Date(q.createdAt).toLocaleDateString("en-IN")}
+                        Created on {formatDate(q.createdAt)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-base text-slate-900">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-base text-slate-900 mr-1">
                       ₹{q.totalAmount.toLocaleString("en-IN")}
                     </span>
+                    <Link
+                      to={`/quotes/${q.id}/edit`}
+                      className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
+                      title="Edit this quotation"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </Link>
                     <Link
                       to={`/quotes/${q.id}`}
                       className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
                     >
-                      <span>View Quote</span>
+                      <span>View</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>

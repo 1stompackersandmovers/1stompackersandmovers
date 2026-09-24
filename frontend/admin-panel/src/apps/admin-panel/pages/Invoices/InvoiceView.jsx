@@ -22,7 +22,7 @@ import {
   useGetInvoicePaymentsQuery,
   useRecordInvoicePaymentMutation,
 } from "../../../../store/apiSlices/invoicesApiSlice";
-import { companyConfig } from "../../../../configs/company.config";
+import { useGetSettingsQuery } from "../../../../store/apiSlices/settingsApiSlice";
 import { FormField } from "../../../../components/FormField";
 
 const InvoiceView = () => {
@@ -30,8 +30,23 @@ const InvoiceView = () => {
   const navigate = useNavigate();
 
   const { data: invoice, isLoading: loading } = useGetInvoiceByIdQuery(id);
+  const { data: dbSettings } = useGetSettingsQuery();
+  const company = dbSettings || {};
   const { data: payments = [], isLoading: paymentsLoading } = useGetInvoicePaymentsQuery(id);
   const [recordPayment, { isLoading: recordingPayment }] = useRecordInvoicePaymentMutation();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === "CURRENT_TIMESTAMP" || dateStr === "null" || dateStr === "undefined") {
+      return "—";
+    }
+    try {
+      const s = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T") + "Z";
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? (dateStr.length > 20 ? "—" : dateStr) : d.toLocaleDateString("en-IN");
+    } catch {
+      return "—";
+    }
+  };
 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -84,13 +99,15 @@ const InvoiceView = () => {
   }
 
   // Dynamic UPI Payment Intent String
-  const upiPayload = `upi://pay?pa=${companyConfig.upi.id}&pn=${encodeURIComponent(
-    companyConfig.upi.payeeName
+  const upiId = company.upi?.id || company.bankDetails?.upiId || "";
+  const payeeName = company.upi?.payeeName || company.name || "1st Om Packers and Movers";
+  const upiPayload = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(
+    payeeName
   )}&am=${invoice.balanceDue > 0 ? invoice.balanceDue : invoice.totalAmount}&cu=INR&tn=${encodeURIComponent(
     invoice.invoiceNumber
   )}`;
 
-  const whatsAppMessage = `*Tax Invoice from ${companyConfig.name}*
+  const whatsAppMessage = `*Tax Invoice from ${company.name || "1st Om Packers and Movers"}*
 Invoice No: ${invoice.invoiceNumber}
 Customer: ${invoice.customerName}
 -----------------------------
@@ -99,10 +116,9 @@ Advance Paid: ₹${invoice.advancePaid.toLocaleString("en-IN")}
 *Balance Due: ₹${invoice.balanceDue.toLocaleString("en-IN")}*
 Status: ${invoice.paymentStatus.toUpperCase()}
 -----------------------------
-You can pay via UPI to: ${companyConfig.upi.id}
-Bank: ${companyConfig.bankDetails.bankName} | A/C: ${companyConfig.bankDetails.accountNumber} | IFSC: ${companyConfig.bankDetails.ifsc}
+${upiId ? `You can pay via UPI to: ${upiId}\n` : ""}Bank: ${company.bankDetails?.bankName || "State Bank of India"} | A/C: ${company.bankDetails?.accountNumber || "N/A"} | IFSC: ${company.bankDetails?.ifsc || "N/A"}
 -----------------------------
-Thank you for choosing 1st Om Packers & Movers!`;
+Thank you for choosing ${company.name || "1st Om Packers & Movers"}!`;
 
   return (
     <div className="space-y-6 pb-12 max-w-5xl mx-auto">
@@ -164,16 +180,21 @@ Thank you for choosing 1st Om Packers & Movers!`;
         {/* Header Strip */}
         <div className="flex justify-between items-start border-b border-slate-100 pb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-md">
-              1OM
-            </div>
+            <img
+              src={company.logo?.primary || "/images/primary-logo.webp"}
+              alt={company.name || "Company Logo"}
+              className="h-14 w-auto object-contain max-w-44"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                {companyConfig.name}
+                {company.name || "1st Om Packers and Movers"}
               </h1>
-              <p className="text-xs text-slate-500 font-medium">{companyConfig.tagline}</p>
+              <p className="text-xs text-slate-500 font-medium">{company.tagline || ""}</p>
               <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                GSTIN: {companyConfig.legal.gstin} | PAN: {companyConfig.legal.pan} | SAC: {invoice.sacCode || "9965"}
+                GSTIN: {company.gstin || "N/A"} | PAN: {company.pan || "N/A"} | SAC: {invoice.sacCode || company.sacCode || "9965"}
               </p>
             </div>
           </div>
@@ -192,7 +213,7 @@ Thank you for choosing 1st Om Packers & Movers!`;
             </span>
             <div className="text-sm font-mono font-bold text-slate-900">{invoice.invoiceNumber}</div>
             <div className="text-xs text-slate-500">
-              Date: {new Date(invoice.createdAt).toLocaleDateString("en-IN")}
+              Date: {formatDate(invoice.createdAt)}
             </div>
           </div>
         </div>
@@ -269,9 +290,11 @@ Thank you for choosing 1st Om Packers & Movers!`;
               <p className="text-slate-500 text-[11px]">
                 Scan with GPay, PhonePe, or Paytm to settle balance directly
               </p>
-              <div className="font-mono text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded inline-block">
-                {companyConfig.upi.id}
-              </div>
+              {upiId && (
+                <div className="font-mono text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded inline-block">
+                  {upiId}
+                </div>
+              )}
             </div>
           </div>
 
@@ -342,16 +365,16 @@ Thank you for choosing 1st Om Packers & Movers!`;
             <h5 className="font-bold text-slate-700 uppercase tracking-wider mb-1">
               Bank Account for Direct NEFT / RTGS
             </h5>
-            <p>Bank: <strong>{companyConfig.bankDetails.bankName}</strong></p>
-            <p>Account: <strong>{companyConfig.bankDetails.accountNumber}</strong></p>
-            <p>IFSC: <strong>{companyConfig.bankDetails.ifsc}</strong></p>
+            <p>Bank: <strong>{company.bankDetails?.bankName || "State Bank of India"}</strong></p>
+            <p>Account: <strong>{company.bankDetails?.accountNumber || "N/A"}</strong></p>
+            <p>IFSC: <strong>{company.bankDetails?.ifsc || "N/A"}</strong></p>
           </div>
           <div>
             <h5 className="font-bold text-slate-700 uppercase tracking-wider mb-1">
               Notice & Terms
             </h5>
             <p>
-              Please make all cheques or digital payments payable to <strong>{companyConfig.legal.legalName}</strong>. 
+              Please make all cheques or digital payments payable to <strong>{company.name || "1st Om Packers and Movers"}</strong>. 
               Payment is due upon successful unloading & verification at destination.
             </p>
           </div>

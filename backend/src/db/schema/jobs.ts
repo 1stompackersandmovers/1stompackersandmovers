@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { quotations } from "./quotations";
 import { leads } from "./leads";
 
@@ -22,7 +23,7 @@ export const jobs = sqliteTable("jobs", {
     .default("scheduled")
     .notNull(),
   createdAt: text("created_at")
-    .default("CURRENT_TIMESTAMP")
+    .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
 

@@ -23,7 +23,6 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { companyConfig } from "../../../../configs/company.config";
 import { useAuth } from "../../../../store/AuthContext";
 import { api, setAuthToken } from "../../../../util/api";
 import {
@@ -79,25 +78,40 @@ const Settings = () => {
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
-  // Settings State (Loaded directly from Database, fallback to companyConfig)
+  // Settings State (Loaded directly from Database)
   const [formData, setFormData] = useState({
-    name: companyConfig.name,
-    shortName: companyConfig.shortName,
-    tagline: companyConfig.tagline,
-    phone: companyConfig.phone,
-    whatsapp: companyConfig.whatsapp,
-    email: companyConfig.email,
-    website: companyConfig.website,
-    gstin: companyConfig.gstin,
-    pan: companyConfig.pan,
-    sacCode: companyConfig.sacCode,
-    headOffice: { ...companyConfig.headOffice },
-    upi: { ...companyConfig.upi },
-    bankDetails: { ...companyConfig.bankDetails },
+    name: "",
+    shortName: "",
+    tagline: "",
+    phone: "",
+    whatsapp: "",
+    email: "",
+    website: "",
+    gstin: "",
+    pan: "",
+    sacCode: "9965",
+    headOffice: {
+      address: "",
+      city: "",
+      state: "",
+      pincode: "",
+      phone: "",
+    },
+    upi: {
+      id: "",
+      payeeName: "",
+    },
+    bankDetails: {
+      accountName: "",
+      bankName: "",
+      accountNumber: "",
+      ifsc: "",
+      branch: "",
+    },
     terms: {
-      quotation: [...companyConfig.terms.quotation],
-      invoice: [...companyConfig.terms.invoice],
-      bilty: [...companyConfig.terms.bilty],
+      quotation: [],
+      invoice: [],
+      bilty: [],
     },
   });
 
@@ -157,11 +171,11 @@ const Settings = () => {
       if (res.admin) {
         setAdminProfile(res.admin);
       }
-      setProfileSuccess("Admin username & email updated successfully!");
+      setProfileSuccess("Account username & email updated successfully!");
       setTimeout(() => setProfileSuccess(""), 4000);
     } catch (err) {
       setProfileError(
-        err.data?.error || err.message || "Failed to update admin profile",
+        err.data?.error || err.message || "Failed to update account profile",
       );
     }
   };
@@ -263,7 +277,7 @@ const Settings = () => {
       const backupData = {
         exportDate: new Date().toISOString(),
         company: formData.name,
-        adminUser: admin?.username || "Admin",
+        adminUser: admin?.username || "Account",
         leads:
           leadsRes.status === "fulfilled" ? leadsRes.value.leads || [] : [],
         quotes:
@@ -318,7 +332,7 @@ const Settings = () => {
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Configure company identity, GST tax details, UPI accounts, terms,
-            and administrator preferences
+            and account preferences
           </p>
         </div>
 
@@ -935,19 +949,19 @@ const Settings = () => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Card 1: Admin Profile (Username & Email) */}
+              {/* Card 1: Account Profile (Username & Email) */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                     <User className="w-4 h-4 text-blue-600" />
-                    <span>Administrator Profile</span>
+                    <span>Account Profile</span>
                   </h3>
                 </div>
 
                 <div className="space-y-3 text-xs">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Admin Username *
+                      Username *
                     </label>
                     <div className="relative">
                       <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
@@ -956,7 +970,7 @@ const Settings = () => {
                         required
                         value={profileUsername}
                         onChange={(e) => setProfileUsername(e.target.value)}
-                        placeholder="admin"
+                        placeholder="username"
                         className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs font-semibold"
                       />
                     </div>
@@ -973,7 +987,7 @@ const Settings = () => {
                         required
                         value={profileEmail}
                         onChange={(e) => setProfileEmail(e.target.value)}
-                        placeholder="admin@1stompackersandmovers.com"
+                        placeholder="account@1stompackersandmovers.com"
                         className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs"
                       />
                     </div>
@@ -1080,7 +1094,7 @@ const Settings = () => {
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
                     <span>
                       Please enter and save your email address in the
-                      Administrator Profile box before enabling two-factor
+                      Account Profile box before enabling two-factor
                       authentication.
                     </span>
                   </div>
@@ -1091,7 +1105,7 @@ const Settings = () => {
               <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Lock className="w-4 h-4 text-blue-600" />
-                  <span>Change Administrator Password</span>
+                  <span>Change Account Password</span>
                 </h3>
 
                 <div className="space-y-3 text-xs">
@@ -1204,7 +1218,7 @@ const Settings = () => {
                     <ul className="space-y-1.5 text-[11px] text-slate-600 list-disc list-inside">
                       <li>
                         Keep Two-Factor Authentication enabled for all
-                        administrative access.
+                        account access.
                       </li>
                       <li>
                         Use a strong, unique password with letters, numbers, and
@@ -1227,7 +1241,7 @@ const Settings = () => {
                       <span>Protected Account</span>
                     </p>
                     <p>
-                      All administrative sessions are securely authenticated.
+                      All account sessions are securely authenticated.
                       Password updates and two-step verification changes take
                       effect immediately.
                     </p>

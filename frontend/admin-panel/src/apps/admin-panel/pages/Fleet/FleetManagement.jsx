@@ -4,6 +4,9 @@ import {
   Plus,
   AlertTriangle,
   CheckCircle,
+  CheckCircle2,
+  Clock,
+  Wrench,
   Calendar,
   Phone,
   Shield,
@@ -20,8 +23,10 @@ import {
   useGetVehiclesQuery,
   useAddVehicleMutation,
   useUpdateVehicleMutation,
+  useDeleteVehicleMutation,
 } from "../../../../store/apiSlices/vehiclesApiSlice";
 import { FormField } from "../../../../components/FormField";
+import { CardGridSkeleton } from "../../shared/components/Skeleton";
 
 const VEHICLE_TYPES = [
   "Tata 407 (Closed Container)",
@@ -38,12 +43,22 @@ const VEHICLE_TYPES = [
 const FleetManagement = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const { data: vehicles = [], isLoading: loading, refetch } = useGetVehiclesQuery({
-    status: statusFilter !== "all" ? statusFilter : undefined,
-  });
+  const { data: vehicles = [], isLoading, isFetching, refetch } = useGetVehiclesQuery({});
 
   const [addVehicle, { isLoading: adding }] = useAddVehicleMutation();
   const [updateVehicle, { isLoading: updating }] = useUpdateVehicleMutation();
+  const [deleteVehicle] = useDeleteVehicleMutation();
+
+  const handleDeleteVehicle = async (v) => {
+    if (!window.confirm(`Are you sure you want to retire / remove vehicle ${v.vehicleNumber}?`)) {
+      return;
+    }
+    try {
+      await deleteVehicle(v.id).unwrap();
+    } catch (err) {
+      alert("Failed to delete vehicle: " + (err.data?.error || err.message));
+    }
+  };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
@@ -185,9 +200,11 @@ const FleetManagement = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const totalFleet = vehicles.length;
   const availableCount = vehicles.filter((v) => v.status === "available").length;
   const onMoveCount = vehicles.filter((v) => v.status === "on_move").length;
   const maintenanceCount = vehicles.filter((v) => v.status === "maintenance").length;
+  const retiredCount = vehicles.filter((v) => v.status === "retired").length;
 
   return (
     <div className="space-y-6 pb-12">
@@ -197,7 +214,7 @@ const FleetManagement = () => {
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">Fleet & Transport Assets</h2>
             <span className="bg-blue-50 text-blue-700 border border-blue-200/70 text-xs font-semibold px-2 py-0.5 rounded-full">
-              {vehicles.length} Vehicles
+              {totalFleet} Vehicles
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -208,15 +225,15 @@ const FleetManagement = () => {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => refetch()}
-            className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-blue-600 bg-slate-50 border border-slate-200/80 rounded-xl transition-all cursor-pointer text-xs font-medium"
+            className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 bg-slate-50 border border-slate-200/80 rounded-xl transition-all cursor-pointer text-xs font-medium"
             title="Refresh fleet list"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RotateCcw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin text-blue-600" : ""}`} />
             <span>Sync</span>
           </button>
           <button
             onClick={handleOpenAddModal}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xs shadow-blue-500/20 transition-all cursor-pointer"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xs shadow-blue-500/20 transition-all cursor-pointer active:scale-98"
           >
             <Plus className="w-4 h-4" />
             <span>Add Vehicle</span>
@@ -236,7 +253,7 @@ const FleetManagement = () => {
               </span>
             </div>
           </div>
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 flex-wrap">
             {criticalExpiries.map((v) => (
               <span key={v.id} className="font-mono bg-white text-rose-700 px-2 py-0.5 rounded border border-rose-200 font-bold text-[11px]">
                 {v.vehicleNumber}
@@ -246,130 +263,213 @@ const FleetManagement = () => {
         </div>
       )}
 
-      {/* KPI Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Fleet</span>
-          <div className="text-2xl font-black text-slate-900 mt-1">{vehicles.length}</div>
+      {/* KPI Metric Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Fleet</span>
+            <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+              <Truck className="w-4 h-4" />
+            </span>
+          </div>
+          <p className="text-2xl font-black text-slate-900 mt-2 font-mono">{totalFleet}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">All registered transport assets</p>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs">
-          <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider block">Available</span>
-          <div className="text-2xl font-black text-emerald-700 mt-1">{availableCount}</div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Available</span>
+            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+              <CheckCircle2 className="w-4 h-4" />
+            </span>
+          </div>
+          <p className="text-2xl font-black text-emerald-600 mt-2 font-mono">{availableCount}</p>
+          <p className="text-[11px] text-emerald-600 font-medium mt-0.5">
+            {totalFleet > 0 ? `${Math.round((availableCount / totalFleet) * 100)}% Ready for Dispatch` : "Ready for moves"}
+          </p>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs">
-          <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block">On Highway Move</span>
-          <div className="text-2xl font-black text-blue-700 mt-1">{onMoveCount}</div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">On Highway Move</span>
+            <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+              <Clock className="w-4 h-4" />
+            </span>
+          </div>
+          <p className="text-2xl font-black text-blue-600 mt-2 font-mono">{onMoveCount}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Active on delivery routes</p>
         </div>
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs">
-          <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block">In Maintenance</span>
-          <div className="text-2xl font-black text-amber-700 mt-1">{maintenanceCount}</div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">In Maintenance</span>
+            <span className="p-2 rounded-xl bg-amber-50 text-amber-600">
+              <Wrench className="w-4 h-4" />
+            </span>
+          </div>
+          <p className="text-2xl font-black text-amber-600 mt-2 font-mono">{maintenanceCount}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Under repair or inspection</p>
         </div>
       </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs space-y-3">
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           <input
             type="text"
-            placeholder="Search by truck # or driver..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Search by truck #, vehicle type, or driver..."
+            className="w-full pl-10 pr-9 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-0.5"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        <div className="flex gap-1 overflow-x-auto text-xs">
-          {["all", "available", "on_move", "maintenance", "retired"].map((st) => (
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+          {[
+            { id: "all", label: "All Fleet", count: totalFleet },
+            { id: "available", label: "Available", count: availableCount },
+            { id: "on_move", label: "On Highway Move", count: onMoveCount },
+            { id: "maintenance", label: "In Maintenance", count: maintenanceCount },
+            { id: "retired", label: "Retired", count: retiredCount },
+          ].map((tab) => (
             <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 rounded-xl capitalize font-medium transition-colors cursor-pointer ${
-                statusFilter === st
-                  ? "bg-slate-900 text-white font-bold"
-                  : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all cursor-pointer ${
+                statusFilter === tab.id
+                  ? "bg-blue-600 text-white shadow-xs font-semibold"
+                  : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
               }`}
             >
-              {st.replace("_", " ")}
+              <span>{tab.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  statusFilter === tab.id
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-200/70 text-slate-600"
+                }`}
+              >
+                {tab.count}
+              </span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Vehicle Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredVehicles.map((v) => (
-          <div
-            key={v.id}
-            className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-3.5 flex flex-col justify-between hover:border-slate-300 transition-colors"
-          >
-            <div className="space-y-2">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-mono font-black text-base text-slate-900 tracking-tight">
-                    {v.vehicleNumber}
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium">{v.vehicleType}</p>
-                </div>
-                <span
-                  className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
-                    v.status === "available"
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                      : v.status === "on_move"
-                      ? "bg-blue-50 text-blue-700 border border-blue-200"
-                      : v.status === "maintenance"
-                      ? "bg-amber-50 text-amber-700 border border-amber-200"
-                      : "bg-slate-100 text-slate-500"
-                  }`}
-                >
-                  {v.status.replace("_", " ")}
-                </span>
-              </div>
-
-              {/* Capacities */}
-              <div className="flex items-center gap-2 text-xs">
-                {v.capacityTons && (
-                  <span className="bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 font-medium text-slate-600">
-                    {v.capacityTons} Tons
-                  </span>
-                )}
-                {v.capacityCft && (
-                  <span className="bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 font-medium text-slate-600">
-                    {v.capacityCft} CFT Volume
-                  </span>
-                )}
-              </div>
-
-              {/* Driver */}
-              {v.defaultDriverName && (
-                <div className="pt-2 border-t border-slate-100 text-xs text-slate-600 flex items-center justify-between">
-                  <span className="text-slate-400">Driver:</span>
-                  <div className="font-medium text-slate-800">
-                    {v.defaultDriverName} {v.defaultDriverPhone && `(${v.defaultDriverPhone})`}
-                  </div>
-                </div>
-              )}
-
-              {/* Expiry badges */}
-              <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-1">
-                {renderExpiryBadge("Insurance", v.insuranceExpiry)}
-                {renderExpiryBadge("Fitness", v.fitnessExpiry)}
-                {renderExpiryBadge("Permit", v.permitExpiry)}
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-              <button
-                onClick={() => handleOpenEditModal(v)}
-                className="px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded-xl font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-                <span>Edit / Status</span>
-              </button>
-            </div>
+      {isLoading || isFetching ? (
+        <CardGridSkeleton count={6} />
+      ) : filteredVehicles.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
+          <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+            <Truck className="w-7 h-7" />
           </div>
-        ))}
-      </div>
+          <h3 className="text-base font-bold text-slate-800">No vehicles found</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            {searchQuery
+              ? `No transport assets match "${searchQuery}".`
+              : "No vehicles registered in this category. Click \"Add Vehicle\" to add trucks and containers to your fleet."}
+          </p>
+          <button
+            onClick={handleOpenAddModal}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add First Vehicle</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredVehicles.map((v) => (
+            <div
+              key={v.id}
+              className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-3.5 flex flex-col justify-between hover:border-blue-400 hover:shadow-xs transition-all"
+            >
+              <div className="space-y-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-mono font-black text-base text-slate-900 tracking-tight">
+                      {v.vehicleNumber}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium">{v.vehicleType}</p>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
+                      v.status === "available"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : v.status === "on_move"
+                        ? "bg-blue-50 text-blue-700 border border-blue-200"
+                        : v.status === "maintenance"
+                        ? "bg-amber-50 text-amber-700 border border-amber-200"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {v.status.replace("_", " ")}
+                  </span>
+                </div>
+
+                {/* Capacities */}
+                <div className="flex items-center gap-2 text-xs">
+                  {v.capacityTons && (
+                    <span className="bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 font-medium text-slate-600">
+                      {v.capacityTons} Tons
+                    </span>
+                  )}
+                  {v.capacityCft && (
+                    <span className="bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 font-medium text-slate-600">
+                      {v.capacityCft} CFT Volume
+                    </span>
+                  )}
+                </div>
+
+                {/* Driver */}
+                {v.defaultDriverName && (
+                  <div className="pt-2 border-t border-slate-100 text-xs text-slate-600 flex items-center justify-between">
+                    <span className="text-slate-400">Driver:</span>
+                    <div className="font-medium text-slate-800">
+                      {v.defaultDriverName} {v.defaultDriverPhone && `(${v.defaultDriverPhone})`}
+                    </div>
+                  </div>
+                )}
+
+                {/* Expiry badges */}
+                <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-1">
+                  {renderExpiryBadge("Insurance", v.insuranceExpiry)}
+                  {renderExpiryBadge("Fitness", v.fitnessExpiry)}
+                  {renderExpiryBadge("Permit", v.permitExpiry)}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  onClick={() => handleOpenEditModal(v)}
+                  className="px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded-xl font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Edit / Status</span>
+                </button>
+                <button
+                  onClick={() => handleDeleteVehicle(v)}
+                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl cursor-pointer transition-colors"
+                  title="Retire / Delete Vehicle"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Add / Edit Vehicle Modal */}
       {isModalOpen && (

@@ -14,13 +14,33 @@ import {
   X,
 } from "lucide-react";
 import { useGetBiltiesQuery } from "../../../../store/apiSlices/biltiesApiSlice";
+import { CardGridSkeleton } from "../../shared/components/Skeleton";
 
 const BiltiesList = () => {
-  const { data: bilties = [], isLoading: loading, refetch: fetchBilties } =
+  const { data: bilties = [], isLoading, isFetching, refetch: fetchBilties } =
     useGetBiltiesQuery();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === "CURRENT_TIMESTAMP" || dateStr === "null" || dateStr === "undefined") {
+      return "—";
+    }
+    try {
+      const s = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T") + "Z";
+      const d = new Date(s);
+      return isNaN(d.getTime())
+        ? (dateStr.length > 20 ? "—" : dateStr)
+        : d.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+    } catch {
+      return "—";
+    }
+  };
 
   const filteredBilties = bilties.filter((bilty) => {
     const s = searchQuery.toLowerCase();
@@ -53,7 +73,7 @@ const BiltiesList = () => {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">Highway Bilties (LR)</h2>
-            <span className="bg-amber-50 text-amber-800 border border-amber-200/70 text-xs font-semibold px-2 py-0.5 rounded-full">
+            <span className="bg-blue-50 text-blue-700 border border-blue-200/70 text-xs font-semibold px-2 py-0.5 rounded-full">
               {totalBilties} Consignments
             </span>
           </div>
@@ -68,12 +88,12 @@ const BiltiesList = () => {
             className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 bg-slate-50 border border-slate-200/80 rounded-xl transition-all cursor-pointer text-xs font-medium"
             title="Refresh consignment notes"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RotateCcw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin text-blue-600" : ""}`} />
             <span>Sync</span>
           </button>
           <button
             onClick={() => navigate("/bilties/new")}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xs shadow-amber-500/20 transition-all cursor-pointer active:scale-98"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xs shadow-blue-500/20 transition-all cursor-pointer active:scale-98"
           >
             <Plus className="w-4 h-4" />
             <span>New Bilty (LR)</span>
@@ -166,7 +186,7 @@ const BiltiesList = () => {
               onClick={() => setStatusFilter(tab.id)}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all cursor-pointer ${
                 statusFilter === tab.id
-                  ? "bg-amber-500 text-white shadow-xs font-semibold"
+                  ? "bg-blue-600 text-white shadow-xs font-semibold"
                   : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
               }`}
             >
@@ -186,11 +206,8 @@ const BiltiesList = () => {
       </div>
 
       {/* Bilties Grid */}
-      {loading ? (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
-          <RotateCcw className="w-6 h-6 animate-spin text-amber-500 mx-auto" />
-          <p className="text-sm font-semibold text-slate-700">Loading consignment notes...</p>
-        </div>
+      {isLoading || isFetching ? (
+        <CardGridSkeleton count={6} />
       ) : filteredBilties.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
           <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
@@ -204,7 +221,7 @@ const BiltiesList = () => {
           </p>
           <button
             onClick={() => navigate("/bilties/new")}
-            className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Generate Lorry Receipt</span>
@@ -216,15 +233,15 @@ const BiltiesList = () => {
             <div
               key={bilty.id}
               onClick={() => navigate(`/bilties/${bilty.id}`)}
-              className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-amber-400 cursor-pointer transition-all flex flex-col justify-between space-y-3.5 group"
+              className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-2xs hover:shadow-md hover:border-blue-400 cursor-pointer transition-all flex flex-col justify-between space-y-3.5 group"
             >
               <div>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <span className="font-mono text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-md">
+                    <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-md">
                       {bilty.lrNumber}
                     </span>
-                    <h3 className="text-base font-bold text-slate-900 leading-snug mt-1.5 truncate group-hover:text-amber-600 transition-colors">
+                    <h3 className="text-base font-bold text-slate-900 leading-snug mt-1.5 truncate group-hover:text-blue-600 transition-colors">
                       {bilty.consignorName} ➔ {bilty.consigneeName}
                     </h3>
                     <p className="text-xs text-slate-500 font-mono mt-0.5">
@@ -255,12 +272,7 @@ const BiltiesList = () => {
 
               <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 text-xs text-slate-500">
                 <span className="text-[11px]">
-                  Dispatch:{" "}
-                  {new Date(bilty.createdAt).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
+                  Dispatch: {formatDate(bilty.createdAt)}
                 </span>
                 <span className="text-amber-600 font-semibold group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-[11px]">
                   <span>View Consignment</span>

@@ -13,13 +13,33 @@ import {
   X,
 } from "lucide-react";
 import { useGetInvoicesQuery } from "../../../../store/apiSlices/invoicesApiSlice";
+import { CardGridSkeleton } from "../../shared/components/Skeleton";
 
 const InvoicesList = () => {
-  const { data: invoices = [], isLoading: loading, refetch: fetchInvoices } =
+  const { data: invoices = [], isLoading, isFetching, refetch: fetchInvoices } =
     useGetInvoicesQuery();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const navigate = useNavigate();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === "CURRENT_TIMESTAMP" || dateStr === "null" || dateStr === "undefined") {
+      return "—";
+    }
+    try {
+      const s = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T") + "Z";
+      const d = new Date(s);
+      return isNaN(d.getTime())
+        ? (dateStr.length > 20 ? "—" : dateStr)
+        : d.toLocaleDateString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+    } catch {
+      return "—";
+    }
+  };
 
   const filteredInvoices = invoices.filter((inv) => {
     const s = searchQuery.toLowerCase();
@@ -100,7 +120,7 @@ const InvoicesList = () => {
             className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 bg-slate-50 border border-slate-200/80 rounded-xl transition-all cursor-pointer text-xs font-medium"
             title="Refresh invoices"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RotateCcw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin text-blue-600" : ""}`} />
             <span>Sync</span>
           </button>
           <button
@@ -227,11 +247,8 @@ const InvoicesList = () => {
       </div>
 
       {/* Invoices Grid */}
-      {loading ? (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
-          <RotateCcw className="w-6 h-6 animate-spin text-blue-600 mx-auto" />
-          <p className="text-sm font-semibold text-slate-700">Loading invoices...</p>
-        </div>
+      {isLoading || isFetching ? (
+        <CardGridSkeleton count={6} />
       ) : filteredInvoices.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
           <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
@@ -290,12 +307,7 @@ const InvoicesList = () => {
 
               <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 text-xs text-slate-500">
                 <span className="text-[11px]">
-                  Date:{" "}
-                  {new Date(inv.createdAt).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
+                  Date: {formatDate(inv.createdAt)}
                 </span>
                 <span className="text-blue-600 font-semibold group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-[11px]">
                   <span>View Bill & Pay</span>

@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 
 export const vehicles = sqliteTable("vehicles", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -15,7 +16,7 @@ export const vehicles = sqliteTable("vehicles", {
   fitnessExpiry: text("fitness_expiry"),
   permitExpiry: text("permit_expiry"),
   notes: text("notes"),
-  createdAt: text("created_at").default("CURRENT_TIMESTAMP").notNull(),
+  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export type Vehicle = typeof vehicles.$inferSelect;

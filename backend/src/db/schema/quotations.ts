@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { leads } from "./leads";
 
 export const quotations = sqliteTable("quotations", {
@@ -28,7 +29,7 @@ export const quotations = sqliteTable("quotations", {
     .notNull(),
   validUntil: text("valid_until"),
   createdAt: text("created_at")
-    .default("CURRENT_TIMESTAMP")
+    .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
 

@@ -115,7 +115,7 @@ const AdminPanelLayout = () => {
     if (p.startsWith("/finance")) return { title: "Financial Overview", category: "Finance", desc: "Revenue collections, payroll & move profitability" };
     if (p.startsWith("/invoices")) return { title: "Billing & Invoices", category: "Finance", desc: "Tax invoices, customer payments & balance ledger" };
     if (p.startsWith("/bilties")) return { title: "Consignment Notes (LR)", category: "Logistics", desc: "Official transport bilties & driver dispatch" };
-    if (p.startsWith("/settings")) return { title: "System & Company Settings", category: "System", desc: "Manage company identity, tax compliance, payments, and admin preferences" };
+    if (p.startsWith("/settings")) return { title: "System & Company Settings", category: "System", desc: "Manage company identity, tax compliance, payments, and account preferences" };
     return { title: "Dashboard", category: "Operations", desc: "Overview & metrics" };
   };
 
@@ -146,7 +146,7 @@ const AdminPanelLayout = () => {
                   {companyConfig.name}
                 </h1>
                 <p className="text-[11px] text-slate-400 font-medium leading-none mt-0.5 truncate">
-                  Admin Panel
+                  Account Panel
                 </p>
               </div>
             )}
@@ -210,7 +210,7 @@ const AdminPanelLayout = () => {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-slate-800 truncate leading-tight">
-                    {admin?.username || "Admin"}
+                    {admin?.username || "Account"}
                   </p>
                 </div>
               </div>
@@ -227,7 +227,7 @@ const AdminPanelLayout = () => {
             <div className="flex flex-col items-center gap-2 py-1">
               <div
                 className="w-9 h-9 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center uppercase shadow-xs cursor-default"
-                title={`Logged in as ${admin?.username || "Admin"}`}
+                title={`Logged in as ${admin?.username || "Account"}`}
               >
                 {(admin?.username || "A")[0]}
               </div>
@@ -266,7 +266,7 @@ const AdminPanelLayout = () => {
                   <h2 className="text-xs font-bold text-slate-900 leading-tight truncate" title={companyConfig.name}>
                     {companyConfig.name}
                   </h2>
-                  <p className="text-[10px] text-slate-400 font-medium">Admin Panel</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Account Panel</p>
                 </div>
               </div>
               <button
@@ -311,7 +311,7 @@ const AdminPanelLayout = () => {
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span className="text-xs font-bold text-slate-800">{admin?.username || "Admin"}</span>
+                <span className="text-xs font-bold text-slate-800">{admin?.username || "Account"}</span>
               </div>
               <button
                 onClick={handleLogout}
@@ -367,14 +367,14 @@ const AdminPanelLayout = () => {
                 <ExternalLink className="w-3 h-3" />
               </a>
 
-              {/* Admin Profile Pill */}
+              {/* Account Profile Pill */}
               <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
                 <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center uppercase shadow-2xs">
                   {(admin?.username || "A")[0]}
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-xs font-bold text-slate-800 leading-tight">
-                    {admin?.username || "Admin"}
+                    {admin?.username || "Account"}
                   </p>
                 </div>
                 <button

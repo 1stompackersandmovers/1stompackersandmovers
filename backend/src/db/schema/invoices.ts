@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { jobs } from "./jobs";
 import { quotations } from "./quotations";
 
@@ -24,7 +25,7 @@ export const invoices = sqliteTable("invoices", {
     .notNull(),
   paymentMode: text("payment_mode"),
   createdAt: text("created_at")
-    .default("CURRENT_TIMESTAMP")
+    .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
 

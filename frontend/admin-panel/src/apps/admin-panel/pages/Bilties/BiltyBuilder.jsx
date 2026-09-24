@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router";
 import { ArrowLeft, FileText, Truck, ShieldCheck, AlertCircle, Loader2 } from "lucide-react";
 import { useCreateBiltyMutation } from "../../../../store/apiSlices/biltiesApiSlice";
-import { companyConfig } from "../../../../configs/company.config";
 import { FormField } from "../../../../components/FormField";
 import { useUnsavedChanges } from "../../../../hooks/useUnsavedChanges";
 

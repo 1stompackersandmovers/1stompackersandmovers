@@ -28,18 +28,41 @@ import {
   useCreateManualLeadMutation,
   useUpdateLeadMutation,
 } from "../../../../store/apiSlices/leadsApiSlice";
-import { companyConfig } from "../../../../configs/company.config";
+import { useGetSettingsQuery } from "../../../../store/apiSlices/settingsApiSlice";
 import { FormField } from "../../../../components/FormField";
+import { CardGridSkeleton } from "../../shared/components/Skeleton";
 
 const LeadsList = () => {
   const [statusFilter, setStatusFilter] = useState("all");
-  const { data: leads = [], isLoading: loading, refetch: fetchLeads } =
+  const { data: leads = [], isLoading, isFetching, refetch: fetchLeads } =
     useGetLeadsQuery(statusFilter);
+  const { data: dbSettings } = useGetSettingsQuery();
+  const companyName = dbSettings?.name || "1st Om Packers and Movers";
   const [createManualLead] = useCreateManualLeadMutation();
   const [updateLead] = useUpdateLeadMutation();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLead, setSelectedLead] = useState(null);
+
+  const formatLeadDate = (dateStr) => {
+    if (!dateStr || dateStr === "CURRENT_TIMESTAMP" || dateStr === "null" || dateStr === "undefined") {
+      return "—";
+    }
+    try {
+      const s = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T") + "Z";
+      const d = new Date(s);
+      return isNaN(d.getTime())
+        ? (dateStr.length > 20 ? "—" : dateStr)
+        : d.toLocaleDateString("en-IN", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+    } catch {
+      return "—";
+    }
+  };
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [copiedPhoneId, setCopiedPhoneId] = useState(null);
 
@@ -199,7 +222,7 @@ const LeadsList = () => {
             className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 bg-slate-50 border border-slate-200/80 rounded-xl transition-all cursor-pointer text-xs font-medium"
             title="Refresh leads list"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RotateCcw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin text-blue-600" : ""}`} />
             <span>Sync</span>
           </button>
           <button
@@ -318,11 +341,8 @@ const LeadsList = () => {
       </div>
 
       {/* Leads Grid / Cards */}
-      {loading ? (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
-          <RotateCcw className="w-6 h-6 animate-spin text-blue-600 mx-auto" />
-          <p className="text-sm font-semibold text-slate-700">Loading live inquiries...</p>
-        </div>
+      {isLoading || isFetching ? (
+        <CardGridSkeleton count={6} />
       ) : filteredLeads.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
           <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
@@ -391,12 +411,7 @@ const LeadsList = () => {
                       ⏱️ {lead.timeline || "Immediate"}
                     </span>
                     <span className="text-[10px] text-slate-400 ml-auto">
-                      {new Date(lead.createdAt).toLocaleDateString("en-IN", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatLeadDate(lead.createdAt)}
                     </span>
                   </div>
                 </div>
@@ -433,7 +448,7 @@ const LeadsList = () => {
 
                   <a
                     href={`https://wa.me/91${lead.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-                      `Hello ${lead.name}, greetings from ${companyConfig.name}! We received your shifting inquiry for ${lead.movingFrom} to ${lead.movingTo}. How can we assist you with best rates today?`
+                      `Hello ${lead.name}, greetings from ${companyName}! We received your shifting inquiry for ${lead.movingFrom} to ${lead.movingTo}. How can we assist you with best rates today?`
                     )}`}
                     target="_blank"
                     rel="noreferrer"

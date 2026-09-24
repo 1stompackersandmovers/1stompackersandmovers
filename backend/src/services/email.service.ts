@@ -54,7 +54,9 @@ export const sendOtpEmail = async (
   recipientEmail: string,
   otpCode: string,
   purpose: "2FA Login Verification" | "Password Reset" | "Account Verification" | string,
-  apiKey?: string
+  apiKey?: string,
+  senderEmail?: string,
+  senderName?: string
 ): Promise<boolean> => {
   console.log(`\n========================================`);
   console.log(`🔐 Brevo OTP Dispatch`);
@@ -64,16 +66,21 @@ export const sendOtpEmail = async (
   console.log(`========================================\n`);
 
   if (!apiKey) {
-    console.warn("⚠️ BREVO_API_KEY is not set. OTP has been logged to console for development testing.");
+    console.warn(
+      "⚠️ BREVO_API_KEY is not set in backend/.dev.vars. For local testing, OTP has been logged to console above. To enable real Brevo delivery, add BREVO_API_KEY to backend/.dev.vars"
+    );
     return true; // Return true so flow continues seamlessly in local development
   }
+
+  const fromEmail = senderEmail || "1stompackersandmovers@gmail.com";
+  const fromName = senderName || "1st Om Packers Security";
 
   const subject = `[1st Om P&M Security] ${otpCode} is your ${purpose} code`;
   const htmlContent = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px;">
       <div style="text-align: center; margin-bottom: 24px;">
         <h1 style="color: #0f172a; font-size: 20px; font-weight: 700; margin: 0;">1st Om Packers & Movers</h1>
-        <p style="color: #64748b; font-size: 13px; margin-top: 4px;">Admin Portal Security Verification</p>
+        <p style="color: #64748b; font-size: 13px; margin-top: 4px;">Account Security Verification</p>
       </div>
 
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
@@ -85,14 +92,14 @@ export const sendOtpEmail = async (
       </div>
 
       <div style="color: #64748b; font-size: 12px; line-height: 1.6; border-top: 1px solid #e2e8f0; padding-top: 16px;">
-        <p style="margin: 0;">If you did not initiate this request, someone may be attempting to access your 1st Om Admin account. Please immediately review your account credentials.</p>
+        <p style="margin: 0;">If you did not initiate this request, someone may be attempting to access your 1st Om account. Please immediately review your account credentials.</p>
         <p style="margin: 8px 0 0 0; color: #94a3b8; font-size: 11px;">1st Om Packers and Movers Hub Central • Automated Security Service</p>
       </div>
     </div>
   `;
 
   const payload = {
-    sender: { name: "1st Om Packers Security", email: "security@1stompackersandmovers.com" },
+    sender: { name: fromName, email: fromEmail },
     to: [{ email: recipientEmail }],
     subject,
     htmlContent,
@@ -111,12 +118,18 @@ export const sendOtpEmail = async (
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error("Failed to send Brevo OTP email:", errText);
+      console.error("❌ Failed to send Brevo OTP email:", errText);
+      console.error(
+        "💡 Note: Brevo requires that the sender email ('" +
+          fromEmail +
+          "') be an authorized/verified sender in your Brevo dashboard under Senders & Domains."
+      );
       return false;
     }
+    console.log(`✅ Brevo OTP email dispatched successfully to ${recipientEmail}`);
     return true;
   } catch (err) {
-    console.error("Network error while calling Brevo API for OTP:", err);
+    console.error("❌ Network error while calling Brevo API for OTP:", err);
     return false;
   }
 };

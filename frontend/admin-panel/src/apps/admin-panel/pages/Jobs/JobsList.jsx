@@ -15,13 +15,33 @@ import {
   X,
 } from "lucide-react";
 import { useGetJobsQuery } from "../../../../store/apiSlices/jobsApiSlice";
+import { CardGridSkeleton } from "../../shared/components/Skeleton";
 
 const JobsList = () => {
-  const { data: jobs = [], isLoading: loading, refetch: fetchJobs } =
+  const { data: jobs = [], isLoading, isFetching, refetch: fetchJobs } =
     useGetJobsQuery();
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === "CURRENT_TIMESTAMP" || dateStr === "null" || dateStr === "undefined") {
+      return "Date TBD";
+    }
+    try {
+      const s = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T") + "Z";
+      const d = new Date(s);
+      return isNaN(d.getTime())
+        ? (dateStr.length > 20 ? "Date TBD" : dateStr)
+        : d.toLocaleDateString("en-IN", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+    } catch {
+      return dateStr;
+    }
+  };
 
   const filteredJobs = jobs.filter((j) => {
     const s = searchQuery.toLowerCase();
@@ -105,7 +125,7 @@ const JobsList = () => {
             className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 bg-slate-50 border border-slate-200/80 rounded-xl transition-all cursor-pointer text-xs font-medium"
             title="Refresh active jobs"
           >
-            <RotateCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RotateCcw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin text-blue-600" : ""}`} />
             <span>Sync</span>
           </button>
         </div>
@@ -215,11 +235,8 @@ const JobsList = () => {
       </div>
 
       {/* Jobs Grid */}
-      {loading ? (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
-          <RotateCcw className="w-6 h-6 animate-spin text-blue-600 mx-auto" />
-          <p className="text-sm font-semibold text-slate-700">Loading jobs & dispatches...</p>
-        </div>
+      {isLoading || isFetching ? (
+        <CardGridSkeleton count={6} />
       ) : filteredJobs.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center space-y-3">
           <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
@@ -265,7 +282,7 @@ const JobsList = () => {
                   <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3 text-slate-400" />
-                      <span>{job.movingDate ? new Date(job.movingDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" }) : "Date TBD"}</span>
+                      <span>{formatDate(job.scheduledDate || job.movingDate)}</span>
                     </span>
                     <span className="font-mono font-medium text-slate-700">
                       {job.vehicleAssigned ? `🚛 ${job.vehicleAssigned}` : "Truck pending"}

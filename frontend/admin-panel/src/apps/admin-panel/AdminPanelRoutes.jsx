@@ -22,15 +22,18 @@ import BiltyView from "./pages/Bilties/BiltyView";
 import FinanceDashboard from "./pages/Finance/FinanceDashboard";
 import Settings from "./pages/Settings/Settings";
 import NotFound from "./shared/components/NotFound";
+import Loader from "./shared/components/Loader";
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 text-sm">
-        Authenticating session...
-      </div>
+      <Loader
+        variant="fullscreen"
+        message="Authenticating session..."
+        subtext="Verifying administrative access and company configuration"
+      />
     );
   }
 
@@ -66,6 +69,7 @@ const AdminPanelRoutes = () => {
         <Route path="quotes" element={<QuotesList />} />
         <Route path="quotes/new" element={<QuoteBuilder />} />
         <Route path="quotes/:id" element={<QuoteDetail />} />
+        <Route path="quotes/:id/edit" element={<QuoteBuilder />} />
 
         {/* Jobs & Operations */}
         <Route path="jobs" element={<JobsList />} />

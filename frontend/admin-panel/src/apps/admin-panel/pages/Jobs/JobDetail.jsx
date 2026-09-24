@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   UserCheck,
   FileSpreadsheet,
+  Edit2,
 } from "lucide-react";
 import {
   useGetJobByIdQuery,
@@ -39,7 +40,7 @@ import {
 } from "../../../../store/apiSlices/jobsApiSlice";
 import { useGetVehiclesQuery } from "../../../../store/apiSlices/vehiclesApiSlice";
 import { useGetStaffQuery } from "../../../../store/apiSlices/staffApiSlice";
-import { companyConfig } from "../../../../configs/company.config";
+import { useGetSettingsQuery } from "../../../../store/apiSlices/settingsApiSlice";
 import { FormField } from "../../../../components/FormField";
 
 const JobDetail = () => {
@@ -47,6 +48,8 @@ const JobDetail = () => {
   const navigate = useNavigate();
 
   const { data: job, isLoading: loading } = useGetJobByIdQuery(id);
+  const { data: dbSettings } = useGetSettingsQuery();
+  const company = dbSettings || {};
   const [updateJob] = useUpdateJobMutation();
 
   const { data: resources, isLoading: resourcesLoading } = useGetJobResourcesQuery(id);
@@ -88,6 +91,13 @@ const JobDetail = () => {
   const [payDays, setPayDays] = useState(1);
   const [payNotes, setPayNotes] = useState("");
 
+  const [isEditScheduleOpen, setIsEditScheduleOpen] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState({
+    scheduledDate: "",
+    scheduledTime: "08:00 AM",
+    specialNotes: "",
+  });
+
   // Available resources queries filtered by job date
   const { data: availableVehicles = [] } = useGetVehiclesQuery(
     { date: job?.scheduledDate },
@@ -97,6 +107,32 @@ const JobDetail = () => {
     { date: job?.scheduledDate },
     { skip: !job?.scheduledDate }
   );
+  const { data: allVehicles = [] } = useGetVehiclesQuery({});
+  const { data: allStaff = [] } = useGetStaffQuery({});
+
+  const handleOpenEditSchedule = () => {
+    setScheduleForm({
+      scheduledDate: job?.scheduledDate || "",
+      scheduledTime: job?.scheduledTime || "08:00 AM",
+      specialNotes: job?.specialNotes || "",
+    });
+    setIsEditScheduleOpen(true);
+  };
+
+  const handleUpdateScheduleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await updateJob({
+        id,
+        scheduledDate: scheduleForm.scheduledDate,
+        scheduledTime: scheduleForm.scheduledTime,
+        specialNotes: scheduleForm.specialNotes,
+      }).unwrap();
+      setIsEditScheduleOpen(false);
+    } catch (err) {
+      alert("Failed to update schedule: " + (err.data?.error || err.message));
+    }
+  };
 
   const handleStatusChange = async (newStatus) => {
     if (newStatus === "cancelled") {
@@ -211,15 +247,15 @@ const JobDetail = () => {
     return <div className="text-center py-12 text-rose-500 text-sm">Job not found.</div>;
   }
 
-  const reviewMessage = `*Thank you for moving with ${companyConfig.name}!*
+  const reviewMessage = `*Thank you for moving with ${company.name || "1st Om Packers and Movers"}!*
 Dear ${job.customerName}, we hope your relocation to ${job.deliveryAddress} went smoothly.
 Could you please take 30 seconds to leave us a 5-star review on Google?
-👉 ${companyConfig.website}`;
+👉 ${company.website || "https://1stompackersandmovers.com"}`;
 
-  const dispatchMessage = `*Relocation Update from ${companyConfig.name}*
+  const dispatchMessage = `*Relocation Update from ${company.name || "1st Om Packers and Movers"}*
 Dear ${job.customerName}, your moving crew and transport has been dispatched!
 Vehicle: ${job.vehicleAssigned || "Assigned Transport"}
-Driver: ${job.driverName || "Our Staff"} (${job.driverPhone || companyConfig.phone})
+Driver: ${job.driverName || "Our Staff"} (${job.driverPhone || company.phone || "+91 7033488691"})
 Scheduled Date: ${job.scheduledDate} ${job.scheduledTime ? `at ${job.scheduledTime}` : ""}`;
 
   return (
@@ -378,16 +414,25 @@ Scheduled Date: ${job.scheduledDate} ${job.scheduledTime ? `at ${job.scheduledTi
         </div>
 
         {/* Schedule Info */}
-        <div className="bg-slate-50 p-3.5 rounded-xl text-xs flex items-center justify-between">
+        <div className="bg-slate-50 p-3.5 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-blue-600" />
             <span>Scheduled Date: <strong>{job.scheduledDate}</strong> {job.scheduledTime && `(${job.scheduledTime})`}</span>
           </div>
-          {job.specialNotes && (
-            <span className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded text-[11px] font-medium border border-amber-200">
-              Note: {job.specialNotes}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {job.specialNotes && (
+              <span className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded text-[11px] font-medium border border-amber-200">
+                Note: {job.specialNotes}
+              </span>
+            )}
+            <button
+              onClick={handleOpenEditSchedule}
+              className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <Edit2 className="w-3 h-3 text-blue-600" />
+              <span>Edit Schedule</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -649,28 +694,36 @@ Scheduled Date: ${job.scheduledDate} ${job.scheduledTime ? `at ${job.scheduledTi
 
             <form onSubmit={handleAssignVehicleSubmit} className="space-y-3.5 text-xs">
               <FormField label="Select Available Vehicle" required>
-                <select
-                  required
-                  value={selectedVehicleId}
-                  onChange={(e) => {
-                    setSelectedVehicleId(e.target.value);
-                    const v = availableVehicles.find((item) => item.id.toString() === e.target.value);
-                    if (v) {
-                      setVehicleDriverName(v.defaultDriverName || "");
-                      setVehicleDriverPhone(v.defaultDriverPhone || "");
-                    }
-                  }}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:border-blue-500 outline-none cursor-pointer"
-                >
-                  <option value="">-- Choose Vehicle --</option>
-                  {availableVehicles
-                    .filter((v) => v.isAvailableOnDate && v.status !== "retired")
-                    .map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.vehicleNumber} ({v.vehicleType}) {v.capacityCft ? `- ${v.capacityCft} CFT` : ""}
-                      </option>
-                    ))}
-                </select>
+                {allVehicles.length === 0 ? (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                    No vehicles found in Fleet directory. Please add vehicles under <strong>Fleet</strong> in the sidebar first.
+                  </div>
+                ) : (
+                  <select
+                    required
+                    value={selectedVehicleId}
+                    onChange={(e) => {
+                      setSelectedVehicleId(e.target.value);
+                      const v = (availableVehicles.length > 0 ? availableVehicles : allVehicles).find(
+                        (item) => item.id.toString() === e.target.value
+                      );
+                      if (v) {
+                        setVehicleDriverName(v.defaultDriverName || "");
+                        setVehicleDriverPhone(v.defaultDriverPhone || "");
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:border-blue-500 outline-none cursor-pointer"
+                  >
+                    <option value="">-- Choose Vehicle --</option>
+                    {(availableVehicles.length > 0 ? availableVehicles : allVehicles)
+                      .filter((v) => v.status !== "retired")
+                      .map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.vehicleNumber} ({v.vehicleType}) {v.capacityCft ? `- ${v.capacityCft} CFT` : ""} [{v.status}]
+                        </option>
+                      ))}
+                  </select>
+                )}
               </FormField>
 
               <FormField label="Assigned Driver Name">
@@ -721,28 +774,36 @@ Scheduled Date: ${job.scheduledDate} ${job.scheduledTime ? `at ${job.scheduledTi
 
             <form onSubmit={handleAssignStaffSubmit} className="space-y-3.5 text-xs">
               <FormField label="Select Team Member" required>
-                <select
-                  required
-                  value={selectedStaffId}
-                  onChange={(e) => {
-                    setSelectedStaffId(e.target.value);
-                    const s = availableStaff.find((item) => item.id.toString() === e.target.value);
-                    if (s) {
-                      setStaffRoleOnJob(s.role);
-                      if (s.dailyWage) setStaffRate(s.dailyWage);
-                    }
-                  }}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:border-blue-500 outline-none cursor-pointer"
-                >
-                  <option value="">-- Choose Member --</option>
-                  {availableStaff
-                    .filter((s) => s.isAvailableOnDate && s.status !== "inactive")
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({s.role}) {s.specialization ? `- ${s.specialization}` : ""}
-                      </option>
-                    ))}
-                </select>
+                {allStaff.length === 0 ? (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                    No crew members found in Team directory. Please add personnel under <strong>Team</strong> in the sidebar first.
+                  </div>
+                ) : (
+                  <select
+                    required
+                    value={selectedStaffId}
+                    onChange={(e) => {
+                      setSelectedStaffId(e.target.value);
+                      const s = (availableStaff.length > 0 ? availableStaff : allStaff).find(
+                        (item) => item.id.toString() === e.target.value
+                      );
+                      if (s) {
+                        setStaffRoleOnJob(s.role);
+                        if (s.dailyWage) setStaffRate(s.dailyWage);
+                      }
+                    }}
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:border-blue-500 outline-none cursor-pointer"
+                  >
+                    <option value="">-- Choose Member --</option>
+                    {(availableStaff.length > 0 ? availableStaff : allStaff)
+                      .filter((s) => s.status !== "inactive")
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} — {s.role} {s.specialization ? `(${s.specialization})` : ""} [{s.status}]
+                        </option>
+                      ))}
+                  </select>
+                )}
               </FormField>
 
               <FormField label="Role on This Move">
@@ -921,6 +982,73 @@ Scheduled Date: ${job.scheduledDate} ${job.scheduledTime ? `at ${job.scheduledTi
               >
                 Record Staff Payment
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Edit Job Schedule */}
+      {isEditScheduleOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-600" />
+                <span>Update Job Schedule</span>
+              </h3>
+              <button onClick={() => setIsEditScheduleOpen(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateScheduleSubmit} className="space-y-3.5 text-xs">
+              <FormField label="Scheduled Moving Date" required>
+                <input
+                  type="date"
+                  required
+                  value={scheduleForm.scheduledDate}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, scheduledDate: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 outline-none"
+                />
+              </FormField>
+
+              <FormField label="Preferred Time Slot">
+                <select
+                  value={scheduleForm.scheduledTime}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, scheduledTime: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:border-blue-500 outline-none cursor-pointer"
+                >
+                  {["06:00 AM", "07:00 AM", "08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"].map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </FormField>
+
+              <FormField label="Special Handling Notes">
+                <textarea
+                  rows={2}
+                  value={scheduleForm.specialNotes}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, specialNotes: e.target.value })}
+                  placeholder="e.g. Fragile glassware, lift not working on 3rd floor"
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:border-blue-500 outline-none"
+                />
+              </FormField>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditScheduleOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs cursor-pointer"
+                >
+                  Save Schedule
+                </button>
+              </div>
             </form>
           </div>
         </div>
