@@ -146,7 +146,7 @@ const AdminPanelLayout = () => {
                   {companyConfig.name}
                 </h1>
                 <p className="text-[11px] text-slate-400 font-medium leading-none mt-0.5 truncate">
-                  Account Panel
+                  Admin Panel
                 </p>
               </div>
             )}

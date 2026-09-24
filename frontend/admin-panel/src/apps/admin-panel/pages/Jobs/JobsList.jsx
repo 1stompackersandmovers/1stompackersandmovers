@@ -229,15 +229,15 @@ const JobsList = () => {
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer border ${
                 statusFilter === tab.id
-                  ? "bg-blue-600 text-white shadow-xs font-semibold"
-                  : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60"
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-300 border-slate-200/70"
               }`}
             >
               <span>{tab.label}</span>
               <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-medium ${
                   statusFilter === tab.id
                     ? "bg-white/20 text-white"
                     : "bg-slate-200/70 text-slate-600"
